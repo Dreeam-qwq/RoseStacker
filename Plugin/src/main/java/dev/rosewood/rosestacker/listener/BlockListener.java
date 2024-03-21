@@ -6,7 +6,6 @@ import dev.rosewood.rosestacker.event.BlockStackEvent;
 import dev.rosewood.rosestacker.event.BlockUnstackEvent;
 import dev.rosewood.rosestacker.event.SpawnerStackEvent;
 import dev.rosewood.rosestacker.event.SpawnerUnstackEvent;
-import dev.rosewood.rosestacker.hook.BlockLoggingHook;
 import dev.rosewood.rosestacker.manager.ConfigurationManager.Setting;
 import dev.rosewood.rosestacker.manager.LocaleManager;
 import dev.rosewood.rosestacker.manager.StackManager;
@@ -152,7 +151,6 @@ public class BlockListener implements Listener {
             breakAmount = spawnerUnstackEvent.getDecreaseAmount();
 
             if (this.tryDropSpawners(player, dropLocation, spawnerType, breakAmount, stackedSpawner.isPlacedByPlayer())) {
-                BlockLoggingHook.recordBlockBreak(player, block);
                 if (breakAmount == stackedSpawner.getStackSize()) {
                     stackedSpawner.setStackSize(0);
                     block.setType(Material.AIR);
@@ -207,7 +205,6 @@ public class BlockListener implements Listener {
                 }
             }
 
-            BlockLoggingHook.recordBlockBreak(player, block);
             if (breakAmount == stackedBlock.getStackSize()) {
                 stackedBlock.setStackSize(0);
                 block.setType(Material.AIR);
@@ -749,7 +746,6 @@ public class BlockListener implements Listener {
             }
 
             event.setCancelled(true);
-            BlockLoggingHook.recordBlockPlace(player, against);
         } else { // Handle singular items that have a stack multiplier
             // Set the spawner type
             StackSettingManager stackSettingManager = this.rosePlugin.getManager(StackSettingManager.class);

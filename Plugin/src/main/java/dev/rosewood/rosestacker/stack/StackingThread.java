@@ -9,8 +9,6 @@ import dev.rosewood.rosestacker.event.EntityUnstackEvent;
 import dev.rosewood.rosestacker.event.ItemStackClearEvent;
 import dev.rosewood.rosestacker.event.ItemStackEvent;
 import dev.rosewood.rosestacker.event.PreDropStackedItemsEvent;
-import dev.rosewood.rosestacker.hook.NPCsHook;
-import dev.rosewood.rosestacker.hook.WorldGuardHook;
 import dev.rosewood.rosestacker.manager.ConfigurationManager.Setting;
 import dev.rosewood.rosestacker.manager.EntityCacheManager;
 import dev.rosewood.rosestacker.manager.HologramManager;
@@ -523,7 +521,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
         if (!this.stackManager.isEntityStackingEnabled())
             return null;
 
-        if (livingEntity instanceof Player || livingEntity instanceof ArmorStand || NPCsHook.isNPC(livingEntity))
+        if (livingEntity instanceof Player || livingEntity instanceof ArmorStand)
             return null;
 
         StackedEntity newStackedEntity = new StackedEntity(livingEntity);
@@ -599,7 +597,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
 
     @Override
     public void addEntityStack(StackedEntity stackedEntity) {
-        if (!this.stackManager.isEntityStackingEnabled() || NPCsHook.isNPC(stackedEntity.getEntity()))
+        if (!this.stackManager.isEntityStackingEnabled())
             return;
 
         this.stackedEntities.put(stackedEntity.getEntity().getUniqueId(), stackedEntity);
@@ -911,9 +909,6 @@ public class StackingThread implements StackingLogic, AutoCloseable {
         if (this.isRemoved(entity))
             return;
 
-        if (!WorldGuardHook.testLocation(entity.getLocation()))
-            return;
-
         Collection<Entity> nearbyEntities;
         Predicate<Entity> predicate = x -> x.getType() == entity.getType();
         if (!Setting.ENTITY_MERGE_ENTIRE_CHUNK.getBoolean()) {
@@ -934,8 +929,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
                 continue;
 
             if (stackSettings.testCanStackWith(stackedEntity, other, false)
-                    && (!Setting.ENTITY_REQUIRE_LINE_OF_SIGHT.getBoolean() || EntityUtils.hasLineOfSight(entity, otherEntity, 0.75, false))
-                    && WorldGuardHook.testLocation(otherEntity.getLocation()))
+                    && (!Setting.ENTITY_REQUIRE_LINE_OF_SIGHT.getBoolean() || EntityUtils.hasLineOfSight(entity, otherEntity, 0.75, false)))
                 targetEntities.add(other);
         }
 

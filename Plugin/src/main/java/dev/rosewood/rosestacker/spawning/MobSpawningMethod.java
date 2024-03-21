@@ -2,8 +2,6 @@ package dev.rosewood.rosestacker.spawning;
 
 import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.event.PreStackedSpawnerSpawnEvent;
-import dev.rosewood.rosestacker.hook.SpawnerFlagPersistenceHook;
-import dev.rosewood.rosestacker.hook.WorldGuardHook;
 import dev.rosewood.rosestacker.manager.ConfigurationManager.Setting;
 import dev.rosewood.rosestacker.manager.EntityCacheManager;
 import dev.rosewood.rosestacker.manager.StackManager;
@@ -215,7 +213,7 @@ public class MobSpawningMethod implements SpawningMethod {
                     case NBT -> {
                         StackedEntity newStack = this.createNewEntity(nmsHandler, location, stackedSpawner, entityStackSettings);
                         Optional<StackedEntity> matchingEntity = stackedEntities.stream().filter(x ->
-                                WorldGuardHook.testLocation(x.getLocation()) && entityStackSettings.testCanStackWith(x, newStack, false, true)).findAny();
+                                entityStackSettings.testCanStackWith(x, newStack, false, true)).findAny();
                         if (matchingEntity.isPresent()) {
                             matchingEntity.get().increaseStackSize(newStack.getEntity(), false);
                             updatedStacks.add(matchingEntity.get());
@@ -234,7 +232,7 @@ public class MobSpawningMethod implements SpawningMethod {
 
                     case SIMPLE -> {
                         Optional<StackedEntity> matchingEntity = stackedEntities.stream().filter(x ->
-                                WorldGuardHook.testLocation(x.getLocation()) && entityStackSettings.testCanStackWith(x, x, false, true)).findAny();
+                                entityStackSettings.testCanStackWith(x, x, false, true)).findAny();
                         if (matchingEntity.isPresent()) {
                             // Increase stack size by as much as we can
                             int amountToIncrease = Math.min(i, entityStackSettings.getMaxStackSize() - matchingEntity.get().getStackSize());
@@ -328,7 +326,6 @@ public class MobSpawningMethod implements SpawningMethod {
 
     private StackedEntity createNewEntity(NMSHandler nmsHandler, Location location, StackedSpawner stackedSpawner, EntityStackSettings entityStackSettings) {
         LivingEntity entity = nmsHandler.createNewEntityUnspawned(this.entityType, location, CreatureSpawnEvent.SpawnReason.SPAWNER);
-        SpawnerFlagPersistenceHook.flagSpawnerSpawned(entity);
 
         if ((stackedSpawner.getStackSettings().isMobAIDisabled() && (!Setting.SPAWNER_DISABLE_MOB_AI_ONLY_PLAYER_PLACED.getBoolean() || stackedSpawner.isPlacedByPlayer())) || entityStackSettings.isMobAIDisabled())
             PersistentDataUtils.removeEntityAi(entity);

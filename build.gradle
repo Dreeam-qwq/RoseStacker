@@ -31,6 +31,7 @@ allprojects {
         maven { url = 'https://repo.fvdh.dev/releases' }
         maven { url = 'https://jitpack.io' }
 
+        /*
         maven {
             url = 'https://repo.rosewooddev.io/repository/maven-public'
             credentials {
@@ -41,6 +42,7 @@ allprojects {
                 }
             }
         }
+         */
     }
 
     dependencies {
@@ -51,6 +53,7 @@ allprojects {
 dependencies {
     implementation project(':Plugin')
     implementation project(':NMS:Wrapper')
+    /*
     implementation project(':NMS:v1_16_R3')
     implementation project(path: ':NMS:v1_17_R1', configuration: 'remapped')
     implementation project(path: ':NMS:v1_18_R2', configuration: 'remapped')
@@ -58,6 +61,7 @@ dependencies {
     implementation project(path: ':NMS:v1_19_R3', configuration: 'remapped')
     implementation project(path: ':NMS:v1_20_R1', configuration: 'remapped')
     implementation project(path: ':NMS:v1_20_R2', configuration: 'remapped')
+    */
     implementation project(path: ':NMS:v1_20_R3', configuration: 'remapped')
 }
 
@@ -71,6 +75,7 @@ shadowJar {
     exclude 'dev/rosewood/rosegarden/lib/slf4j/**/*.class'
 }
 
+/*
 publishing {
     publications {
         shadow(MavenPublication) { publication ->
@@ -96,6 +101,7 @@ publishing {
         }
     }
 }
+ */
 
 build.dependsOn shadowJar
-publishShadowPublicationToMavenRepository.dependsOn jar
+//publishShadowPublicationToMavenRepository.dependsOn jar

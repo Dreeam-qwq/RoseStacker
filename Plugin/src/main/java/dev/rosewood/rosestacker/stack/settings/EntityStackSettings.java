@@ -7,7 +7,6 @@ import com.google.gson.reflect.TypeToken;
 import dev.rosewood.rosegarden.config.CommentedFileConfiguration;
 import dev.rosewood.rosegarden.utils.RoseGardenUtils;
 import dev.rosewood.rosestacker.RoseStacker;
-import dev.rosewood.rosestacker.hook.SpawnerFlagPersistenceHook;
 import dev.rosewood.rosestacker.manager.ConfigurationManager.Setting;
 import dev.rosewood.rosestacker.nms.NMSAdapter;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorageType;
@@ -279,8 +278,6 @@ public class EntityStackSettings extends StackSettings {
         switch (this.entityType) {
             case CREEPER -> NMSAdapter.getHandler().unigniteCreeper((Creeper) stacking);
         }
-
-        SpawnerFlagPersistenceHook.unflagSpawnerSpawned(stacking);
     }
 
     /**
@@ -312,8 +309,6 @@ public class EntityStackSettings extends StackSettings {
             case ZOMBIFIED_PIGLIN -> ((PigZombie) stacked).setAngry(((PigZombie) unstacked).isAngry());
         }
 
-        SpawnerFlagPersistenceHook.setPersistence(stacked);
-
         stacked.setLastDamageCause(unstacked.getLastDamageCause());
         NMSAdapter.getHandler().setLastHurtBy(unstacked, stacked.getKiller());
 
@@ -327,7 +322,6 @@ public class EntityStackSettings extends StackSettings {
      * @param entity The entity being spawned
      */
     public void applySpawnerSpawnedProperties(LivingEntity entity) {
-        SpawnerFlagPersistenceHook.flagSpawnerSpawned(entity);
         PersistentDataUtils.tagSpawnedFromSpawner(entity);
 
         if (this.isEntity(Raider.class) && Setting.SPAWNER_NERF_PATROL_LEADERS.getBoolean())

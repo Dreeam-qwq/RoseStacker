@@ -19,6 +19,7 @@ dependencies {
     compileOnly 'com.mojang:authlib:1.5.21'
 
     // Misc other
+    /*
     compileOnly 'net.coreprotect:coreprotect:19.4'
     compileOnly 'de.diddiz:logblock:1.16.1.1'
     compileOnly 'dev.frankheijden.insights:Insights:6.13.0'
@@ -36,6 +37,7 @@ dependencies {
     compileOnly 'com.bgsoftware:WildChestsAPI:2.2.3'
     compileOnly 'com.sk89q.worldguard:worldguard-bukkit:7.0.4'
     compileOnly 'dev.rosewood:roseloot:1.2.0'
+    */
 
     // Dependencies that will be shaded into the jar
     api 'dev.rosewood:rosegarden:1.2.4'
