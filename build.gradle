@@ -63,7 +63,6 @@ allprojects {
 dependencies {
     implementation project(':Plugin')
     implementation project(':NMS:Wrapper')
-    /*
     implementation project(':NMS:v1_16_R3')
     implementation project(path: ':NMS:v1_17_R1', configuration: 'remapped')
     implementation project(path: ':NMS:v1_18_R2', configuration: 'remapped')
@@ -71,7 +70,6 @@ dependencies {
     implementation project(path: ':NMS:v1_19_R3', configuration: 'remapped')
     implementation project(path: ':NMS:v1_20_R1', configuration: 'remapped')
     implementation project(path: ':NMS:v1_20_R2', configuration: 'remapped')
-    */
     implementation project(path: ':NMS:v1_20_R3', configuration: 'remapped')
     implementation project(path: ':NMS:v1_20_R4', configuration: 'remapped')
 }
