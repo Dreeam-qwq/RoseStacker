@@ -496,6 +496,7 @@ public class NMSHandlerImpl implements NMSHandler {
         }
     }
 
+    @Override
     public EntityDeathEvent createAsyncEntityDeathEvent(@NotNull LivingEntity what, @NotNull List<ItemStack> drops, int droppedExp) {
         return new AsyncEntityDeathEventImpl(what, drops, droppedExp);
     }

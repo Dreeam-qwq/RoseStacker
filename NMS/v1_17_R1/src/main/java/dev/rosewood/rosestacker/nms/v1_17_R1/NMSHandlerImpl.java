@@ -58,6 +58,7 @@ import net.minecraft.world.entity.raid.Raider;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.level.BaseSpawner;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.entity.PersistentEntitySectionManager;
@@ -413,6 +414,7 @@ public class NMSHandlerImpl implements NMSHandler {
         return ((CraftWorld) item.getWorld()).getHandle().spigotConfig.itemDespawnRate;
     }
 
+    @Override
     public EntityDeathEvent createAsyncEntityDeathEvent(@NotNull LivingEntity what, @NotNull List<ItemStack> drops, int droppedExp) {
         return new AsyncEntityDeathEventImpl(what, drops, droppedExp);
     }
