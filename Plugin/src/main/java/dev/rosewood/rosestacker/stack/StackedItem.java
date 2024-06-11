@@ -152,8 +152,17 @@ public class StackedItem extends Stack<ItemStackSettings> implements Comparable<
         if (this == stack2)
             return 0;
 
-        if (Setting.ITEM_MERGE_INTO_NEWEST.getBoolean())
+        if (Setting.ITEM_MERGE_INTO_NEWEST.getBoolean()) {
+            if (Setting.ITEM_MERGE_DISABLE_TO_NEWEST_FOR_CERTAIN.getBoolean() && (stack2.getItem().getItemStack().getType() == Material.STRING || stack2.getItem().getItemStack().getType().toString().endsWith("carpet"))) {
+                if (this.getStackSize() == stack2.getStackSize()) {
+                    return entity1.getTicksLived() > entity2.getTicksLived() ? 2 : -2;
+                }
+
+                return this.getStackSize() > stack2.getStackSize() ? 1 : -1;
+            }
+
             return entity1.getTicksLived() < entity2.getTicksLived() ? 1 : -1;
+        }
 
         if (this.getStackSize() == stack2.getStackSize())
             return entity1.getTicksLived() > entity2.getTicksLived() ? 2 : -2;

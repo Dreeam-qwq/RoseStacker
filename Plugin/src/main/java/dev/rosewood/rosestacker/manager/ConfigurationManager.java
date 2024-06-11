@@ -92,6 +92,7 @@ public class ConfigurationManager extends AbstractConfigurationManager {
         ITEM_RESET_DESPAWN_TIMER_ON_MERGE("global-item-settings.reset-despawn-timer-on-merge", true, "Should the item despawn timer be reset when an item is merged into it?"),
         ITEM_MERGE_INTO_NEWEST("global-item-settings.merge-into-newest", false, "Should items be merged into the newest stack?"),
         ITEM_UNPACK_BOX_LIKE_VANILLA("global-item-settings.unpack-stacked-shulker-box-like-vanilla", false, "Use vanilla method to get items stored in box, which may allow unpacking an illegal amount of items from the box."),
+        ITEM_MERGE_DISABLE_TO_NEWEST_FOR_CERTAIN("global-item-settings.merge-disable-to-newest-for-certain", false, "Disable merge-into-newest for certain item, for string and carpets. This setting only functional if merge-into-newest is true."),
 
         GLOBAL_BLOCK_SETTINGS("global-block-settings", null, "Global block settings", "Changed values in block_settings.yml will override these values"),
         BLOCK_STACKING_ENABLED("global-block-settings.stacking-enabled", true, "Should block stacking be enabled at all?"),
