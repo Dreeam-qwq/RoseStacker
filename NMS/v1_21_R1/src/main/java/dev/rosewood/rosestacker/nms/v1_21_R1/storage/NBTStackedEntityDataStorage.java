@@ -1,4 +1,4 @@
-package dev.rosewood.rosestacker.nms.v1_19_R2.storage;
+package dev.rosewood.rosestacker.nms.v1_21_R1.storage;
 
 import dev.rosewood.rosestacker.nms.NMSAdapter;
 import dev.rosewood.rosestacker.nms.NMSHandler;
@@ -6,7 +6,7 @@ import dev.rosewood.rosestacker.nms.storage.EntityDataEntry;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataIOException;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorage;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorageType;
-import dev.rosewood.rosestacker.nms.v1_19_R2.NMSHandlerImpl;
+import dev.rosewood.rosestacker.nms.v1_21_R1.NMSHandlerImpl;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -167,6 +167,33 @@ public class NBTStackedEntityDataStorage extends StackedEntityDataStorage {
     }
 
     @Override
+    public void forEachTransforming(Function<LivingEntity, Boolean> function) {
+        LivingEntity thisEntity = this.entity.get();
+        if (thisEntity == null)
+            return;
+
+        synchronized (this.data) {
+            List<CompoundTag> data = new ArrayList<>(this.data);
+            ListIterator<CompoundTag> dataIterator = data.listIterator();
+            while (dataIterator.hasNext()) {
+                CompoundTag compoundTag = dataIterator.next();
+                LivingEntity entity = new NBTEntityDataEntry(this.rebuild(compoundTag)).createEntity(thisEntity.getLocation(), false, thisEntity.getType());
+                if (function.apply(entity)) {
+                    CompoundTag replacementTag = new CompoundTag();
+                    ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(entity, replacementTag);
+                    this.stripUnneeded(replacementTag);
+                    this.stripAttributeUuids(replacementTag);
+                    this.removeDuplicates(replacementTag);
+                    dataIterator.set(replacementTag);
+                }
+            }
+
+            this.data.clear();
+            this.data.addAll(data);
+        }
+    }
+
+    @Override
     public List<LivingEntity> removeIf(Function<LivingEntity, Boolean> function) {
         List<LivingEntity> removedEntries = new ArrayList<>(this.data.size());
         LivingEntity thisEntity = this.entity.get();
@@ -195,33 +222,6 @@ public class NBTStackedEntityDataStorage extends StackedEntityDataStorage {
             this.data.clear();
             this.data.addAll(data);
             return removedEntries;
-        }
-    }
-
-    @Override
-    public void forEachTransforming(Function<LivingEntity, Boolean> function) {
-        LivingEntity thisEntity = this.entity.get();
-        if (thisEntity == null)
-            return;
-
-        synchronized (this.data) {
-            List<CompoundTag> data = new ArrayList<>(this.data);
-            ListIterator<CompoundTag> dataIterator = data.listIterator();
-            while (dataIterator.hasNext()) {
-                CompoundTag compoundTag = dataIterator.next();
-                LivingEntity entity = new NBTEntityDataEntry(this.rebuild(compoundTag)).createEntity(thisEntity.getLocation(), false, thisEntity.getType());
-                if (function.apply(entity)) {
-                    CompoundTag replacementTag = new CompoundTag();
-                    ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(entity, replacementTag);
-                    this.stripUnneeded(replacementTag);
-                    this.stripAttributeUuids(replacementTag);
-                    this.removeDuplicates(replacementTag);
-                    dataIterator.set(replacementTag);
-                }
-            }
-
-            this.data.clear();
-            this.data.addAll(data);
         }
     }
 

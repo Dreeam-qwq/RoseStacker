@@ -1,4 +1,4 @@
-package dev.rosewood.rosestacker.nms.v1_19_R2.spawner;
+package dev.rosewood.rosestacker.nms.v1_21_R1.spawner;
 
 import dev.rosewood.rosestacker.manager.ConfigurationManager.Setting;
 import dev.rosewood.rosestacker.nms.spawner.SpawnerType;
@@ -96,7 +96,7 @@ public class StackedSpawnerTileImpl extends BaseSpawner implements StackedSpawne
         this.trySpawns(false);
 
         // Randomize spawn potentials
-        this.spawnPotentials.getRandom(level.getRandom()).map(WeightedEntry.Wrapper::getData).ifPresent(x -> this.nextSpawnData = x);
+        this.spawnPotentials.getRandom(level.getRandom()).map(WeightedEntry.Wrapper::data).ifPresent(x -> this.nextSpawnData = x);
     }
 
     private void trySpawns(boolean onlyCheckConditions) {
@@ -169,7 +169,7 @@ public class StackedSpawnerTileImpl extends BaseSpawner implements StackedSpawne
         }
 
         return SpawnerType.of(this.spawnPotentials.unwrap().stream()
-                .map(WeightedEntry.Wrapper::getData)
+                .map(WeightedEntry.Wrapper::data)
                 .map(SpawnData::getEntityToSpawn)
                 .map(x -> x.getString("id"))
                 .map(NamespacedKey::fromString)
@@ -191,11 +191,11 @@ public class StackedSpawnerTileImpl extends BaseSpawner implements StackedSpawne
         for (EntityType entityType : spawnerType.getEntityTypes()) {
             CompoundTag tag = new CompoundTag();
             tag.putString("id", entityType.getKey().getKey());
-            builder.add(new SpawnData(tag, Optional.empty()), 1);
+            builder.add(new SpawnData(tag, Optional.empty(), Optional.empty()), 1);
         }
         this.spawnPotentials = builder.build();
 
-        this.spawnPotentials.getRandom(RandomSource.create()).map(WeightedEntry.Wrapper::getData).ifPresent(x -> this.nextSpawnData = x);
+        this.spawnPotentials.getRandom(RandomSource.create()).map(WeightedEntry.Wrapper::data).ifPresent(x -> this.nextSpawnData = x);
         this.updateTile();
     }
 
