@@ -54,12 +54,13 @@ import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.animal.Rabbit;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Spider;
 import net.minecraft.world.entity.monster.Strider;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.raid.Raider;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.level.BaseSpawner;
 import net.minecraft.world.level.ClipContext;
@@ -502,13 +503,12 @@ public class NMSHandlerImpl implements NMSHandler {
 
     @Override
     public List<ItemStack> getBoxContents(Item item) {
-        ItemStack itemStack = item.getItemStack();
-        CompoundTag contents = BlockItem.getBlockEntityData(CraftItemStack.asNMSCopy(itemStack));
+        net.minecraft.world.item.ItemStack itemStack = ((ItemEntity) item).getItem();
+        ItemContainerContents contents = itemStack.set(DataComponents.CONTAINER, ItemContainerContents.EMPTY);
 
-        if (contents != null && contents.contains("Items", 9)) {
-            return contents.getList("Items", 10).stream()
-                    .map(CompoundTag.class::cast)
-                    .map(net.minecraft.world.item.ItemStack::of)
+        if (contents != null) {
+            return contents.stream()
+                    .filter(x -> !x.isEmpty())
                     .map(CraftItemStack::asBukkitCopy)
                     .toList();
         }
