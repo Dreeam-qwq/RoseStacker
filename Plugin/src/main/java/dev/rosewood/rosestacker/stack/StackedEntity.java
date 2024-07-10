@@ -509,7 +509,6 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
         if (this.getStackSize() > 1 || Setting.ENTITY_DISPLAY_TAGS_SINGLE.getBoolean()) {
             String displayString;
             StringPlaceholders.Builder placeholders = StringPlaceholders.builder("amount", StackerUtils.formatNumber(this.getStackSize()));
-            NPCsHook.addCustomPlaceholders(this.entity, placeholders);
 
             if (customName != null && Setting.ENTITY_DISPLAY_TAGS_CUSTOM_NAME.getBoolean()) {
                 placeholders.add("name", customName);

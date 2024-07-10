@@ -256,7 +256,7 @@ public class MobSpawningMethod implements SpawningMethod {
                 case NBT -> {
                     StackedEntity newStack = this.createNewEntity(nmsHandler, location, stackedSpawner, entityStackSettings);
                     Optional<StackedEntity> matchingEntity = stackedEntities.stream().filter(x ->
-                            WorldGuardHook.testLocation(x.getLocation()) && entityStackSettings.testCanStackWith(x, newStack, false, true)).findAny();
+                            entityStackSettings.testCanStackWith(x, newStack, false, true)).findAny();
                     if (matchingEntity.isPresent()) {
                         matchingEntity.get().increaseStackSize(newStack.getEntity(), false);
                         updatedStacks.add(matchingEntity.get());
@@ -275,7 +275,7 @@ public class MobSpawningMethod implements SpawningMethod {
 
                 case SIMPLE -> {
                     Optional<StackedEntity> matchingEntity = stackedEntities.stream().filter(x ->
-                            WorldGuardHook.testLocation(x.getLocation()) && entityStackSettings.testCanStackWith(x, x, false, true)).findAny();
+                            entityStackSettings.testCanStackWith(x, x, false, true)).findAny();
                     if (matchingEntity.isPresent()) {
                         // Increase stack size by as much as we can
                         int amountToIncrease = Math.min(i, entityStackSettings.getMaxStackSize() - matchingEntity.get().getStackSize());
