@@ -126,7 +126,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
 
         // Load chunk data for all stacks in the world
         for (Chunk chunk : this.targetWorld.getLoadedChunks()) {
-            this.loadChunkEntities(chunk, Arrays.asList(chunk.getEntities()));
+            this.loadChunkEntities(Arrays.asList(chunk.getEntities()));
             this.loadChunkBlocks(chunk);
         }
 
@@ -809,7 +809,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
     }
 
     @Override
-    public void loadChunkEntities(Chunk chunk, List<Entity> entities) {
+    public void loadChunkEntities(List<Entity> entities) {
         if (entities.isEmpty())
             return;
 
@@ -866,7 +866,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
     }
 
     @Override
-    public void saveChunkEntities(Chunk chunk, List<Entity> entities, boolean clearStored) {
+    public void saveChunkEntities(List<Entity> entities, boolean clearStored) {
         if (this.stackManager.isEntityStackingEnabled()) {
             List<StackedEntity> stackedEntities = entities.stream()
                     .filter(x -> x instanceof LivingEntity && x.getType() != EntityType.ARMOR_STAND && x.getType() != EntityType.PLAYER)
@@ -892,6 +892,19 @@ public class StackingThread implements StackingLogic, AutoCloseable {
             if (clearStored)
                 stackedItems.stream().map(StackedItem::getItem).map(Entity::getUniqueId).forEach(this.stackedItems::remove);
         }
+    }
+
+    @Override
+    public void saveAllData(boolean clearStored) {
+        // Save stacked blocks and spawners
+        for (Chunk chunk : this.stackChunkData.keySet())
+            this.saveChunkBlocks(chunk, clearStored);
+
+        // Save stacked entities and items
+        List<Entity> entities = new ArrayList<>(this.stackedEntities.size() + this.stackedItems.size());
+        this.stackedEntities.values().stream().map(StackedEntity::getEntity).forEach(entities::add);
+        this.stackedItems.values().stream().map(StackedItem::getItem).forEach(entities::add);
+        this.saveChunkEntities(entities, clearStored);
     }
 
     /**
