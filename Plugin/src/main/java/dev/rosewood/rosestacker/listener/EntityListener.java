@@ -9,8 +9,6 @@ import dev.rosewood.rosestacker.event.AsyncEntityDeathEvent;
 import dev.rosewood.rosestacker.manager.EntityCacheManager;
 import dev.rosewood.rosestacker.manager.StackManager;
 import dev.rosewood.rosestacker.manager.StackSettingManager;
-import dev.rosewood.rosestacker.nms.NMSAdapter;
-import dev.rosewood.rosestacker.nms.NMSHandler;
 import dev.rosewood.rosestacker.nms.storage.EntityDataEntry;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorageType;
 import dev.rosewood.rosestacker.stack.StackedEntity;
@@ -19,6 +17,7 @@ import dev.rosewood.rosestacker.stack.StackedSpawner;
 import dev.rosewood.rosestacker.stack.settings.EntityStackSettings;
 import dev.rosewood.rosestacker.stack.settings.ItemStackSettings;
 import dev.rosewood.rosestacker.stack.settings.SpawnerStackSettings;
+import dev.rosewood.rosestacker.utils.ContainerUtil;
 import dev.rosewood.rosestacker.utils.ItemUtils;
 import dev.rosewood.rosestacker.utils.PersistentDataUtils;
 import dev.rosewood.rosestacker.utils.ThreadUtils;
@@ -34,7 +33,6 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Statistic;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.block.ShulkerBox;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Chicken;
 import org.bukkit.entity.Creeper;
@@ -76,7 +74,6 @@ import org.bukkit.event.entity.SheepRegrowWoolEvent;
 import org.bukkit.event.entity.SpawnerSpawnEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.util.Vector;
 
 public class EntityListener implements Listener {
@@ -246,8 +243,11 @@ public class EntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
-        if (NMSUtil.getVersionNumber() >= 17 && event.getEntity() instanceof Item item && item.getItemStack().getType().toString().contains("SHULKER_BOX")
-                && unpackShulkerBox(item, event.getFinalDamage())) {
+        StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
+
+        if (NMSUtil.getVersionNumber() >= 17 && event.getEntity() instanceof Item item
+                && ContainerUtil.isShulkerBox(item)
+                && ContainerUtil.unpackShulkerBox(stackManager, item, event.getFinalDamage())) {
             event.setCancelled(true);
             return;
         }
@@ -255,7 +255,6 @@ public class EntityListener implements Listener {
         if (!(event.getEntity() instanceof LivingEntity entity) || event.getEntity().getType() == EntityType.ARMOR_STAND || event.getEntity().getType() == EntityType.PLAYER)
             return;
 
-        StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
         if (stackManager.isWorldDisabled(entity.getWorld()))
             return;
 
@@ -288,66 +287,6 @@ public class EntityListener implements Listener {
             if (killer != null && killedEntities.size() - 1 > 0 && SettingKey.MISC_STACK_STATISTICS.get())
                 killer.incrementStatistic(Statistic.KILL_ENTITY, entity.getType(), killedEntities.size() - 1);
         }
-    }
-
-    private boolean unpackShulkerBox(Item item, double damage) {
-        StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        StackedItem stackedItem = stackManager.getStackedItem(item);
-        if (stackedItem == null)
-            return false;
-
-        final int amount = stackedItem.getStackSize();
-
-        if (amount > 1 && damage >= item.getHealth()) {
-            final List<ItemStack> contents = getContents(item);
-            final List<ItemStack> totalContents = new ArrayList<>();
-            final Location location = item.getLocation();
-
-            item.remove();
-
-            for (int i = amount; i > 0; i--) {
-                totalContents.addAll(contents);
-            }
-
-            final int maxStackSize = SettingKey.ITEM_MAX_STACK_SIZE.get();
-
-            for (;;) {
-                if (totalContents.size() > maxStackSize) {
-                    List<ItemStack> stack = new ArrayList<>(totalContents.subList(0, maxStackSize));
-                    totalContents.subList(0, maxStackSize).clear();
-                    stackManager.preStackItems(stack, location);
-                } else {
-                    stackManager.preStackItems(totalContents, location);
-                    break;
-                }
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
-    private List<ItemStack> getContents(Item item) {
-        List<ItemStack> contents = new ArrayList<>();
-
-        if (SettingKey.ITEM_UNPACK_BOX_LIKE_VANILLA.get()) {
-            NMSHandler nmsHandler = NMSAdapter.getHandler();
-            contents = nmsHandler.getBoxContents(item);
-        } else {
-            ItemStack itemStack = item.getItemStack();
-            if (!(itemStack.getItemMeta() instanceof BlockStateMeta meta)) return contents;
-
-            if (!(meta.getBlockState() instanceof ShulkerBox box)) return contents;
-
-            for (ItemStack content : box.getInventory().getContents()) {
-                if (content == null || content.getType().isAir()) continue;
-
-                contents.add(content);
-            }
-        }
-
-        return contents;
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
