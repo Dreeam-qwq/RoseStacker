@@ -10,7 +10,6 @@ import dev.rosewood.rosestacker.event.EntityUnstackEvent;
 import dev.rosewood.rosestacker.event.ItemStackClearEvent;
 import dev.rosewood.rosestacker.event.ItemStackEvent;
 import dev.rosewood.rosestacker.event.PreDropStackedItemsEvent;
-import dev.rosewood.rosestacker.manager.ConfigurationManager.Setting;
 import dev.rosewood.rosestacker.manager.EntityCacheManager;
 import dev.rosewood.rosestacker.manager.HologramManager;
 import dev.rosewood.rosestacker.manager.StackManager;

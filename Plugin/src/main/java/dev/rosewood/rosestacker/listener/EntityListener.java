@@ -246,7 +246,8 @@ public class EntityListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
-        if (NMSUtil.getVersionNumber() >= 17 && event.getEntity() instanceof Item item && item.getItemStack().getType().toString().contains("SHULKER_BOX") && unpackShulkerBox(item, event.getFinalDamage())) {
+        if (NMSUtil.getVersionNumber() >= 17 && event.getEntity() instanceof Item item && item.getItemStack().getType().toString().contains("SHULKER_BOX")
+                && unpackShulkerBox(item, event.getFinalDamage())) {
             event.setCancelled(true);
             return;
         }
@@ -290,7 +291,8 @@ public class EntityListener implements Listener {
     }
 
     private boolean unpackShulkerBox(Item item, double damage) {
-        StackedItem stackedItem = this.stackManager.getStackedItem(item);
+        StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
+        StackedItem stackedItem = stackManager.getStackedItem(item);
         if (stackedItem == null)
             return false;
 
@@ -307,15 +309,15 @@ public class EntityListener implements Listener {
                 totalContents.addAll(contents);
             }
 
-            final int maxStackSize = Setting.ITEM_MAX_STACK_SIZE.getInt();
+            final int maxStackSize = SettingKey.ITEM_MAX_STACK_SIZE.get();
 
             for (;;) {
                 if (totalContents.size() > maxStackSize) {
                     List<ItemStack> stack = new ArrayList<>(totalContents.subList(0, maxStackSize));
                     totalContents.subList(0, maxStackSize).clear();
-                    this.stackManager.preStackItems(stack, location);
+                    stackManager.preStackItems(stack, location);
                 } else {
-                    this.stackManager.preStackItems(totalContents, location);
+                    stackManager.preStackItems(totalContents, location);
                     break;
                 }
             }
@@ -329,7 +331,7 @@ public class EntityListener implements Listener {
     private List<ItemStack> getContents(Item item) {
         List<ItemStack> contents = new ArrayList<>();
 
-        if (Setting.ITEM_UNPACK_BOX_LIKE_VANILLA.getBoolean()) {
+        if (SettingKey.ITEM_UNPACK_BOX_LIKE_VANILLA.get()) {
             NMSHandler nmsHandler = NMSAdapter.getHandler();
             contents = nmsHandler.getBoxContents(item);
         } else {
