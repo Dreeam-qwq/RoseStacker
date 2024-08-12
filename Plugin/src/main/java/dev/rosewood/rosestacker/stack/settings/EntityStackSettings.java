@@ -5,9 +5,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import dev.rosewood.rosegarden.config.CommentedFileConfiguration;
-import dev.rosewood.rosegarden.utils.RoseGardenUtils;
 import dev.rosewood.rosestacker.RoseStacker;
-import dev.rosewood.rosestacker.manager.ConfigurationManager.Setting;
+import dev.rosewood.rosestacker.config.SettingKey;
 import dev.rosewood.rosestacker.nms.NMSAdapter;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorageType;
 import dev.rosewood.rosestacker.stack.EntityStackComparisonResult;
@@ -15,16 +14,13 @@ import dev.rosewood.rosestacker.stack.StackedEntity;
 import dev.rosewood.rosestacker.stack.settings.conditions.entity.StackConditions;
 import dev.rosewood.rosestacker.utils.PersistentDataUtils;
 import dev.rosewood.rosestacker.utils.StackerUtils;
-import dev.rosewood.rosestacker.utils.VersionUtils;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.bukkit.Material;
 import org.bukkit.entity.Ageable;
@@ -52,6 +48,7 @@ public class EntityStackSettings extends StackSettings {
     public static final String SLIME_ACCURATE_DROPS_WITH_KILL_ENTIRE_STACK_ON_DEATH = "accurate-drops-with-kill-entire-stack-on-death";
     public static final String MOOSHROOM_DROP_ADDITIONAL_MUSHROOMS_FOR_EACH_COW_IN_STACK = "drop-additional-mushrooms-for-each-cow-in-stack";
     public static final String MOOSHROOM_EXTRA_MUSHROOMS_PER_COW_IN_STACK = "extra-mushrooms-per-cow-in-stack";
+    public static final String SNOW_GOLEM_FORCE_CUSTOM_NAMED_STACKING = "force-custom-named-stacking";
 
     // Data pertaining to this EntityType
     private final EntityType entityType;
@@ -92,19 +89,19 @@ public class EntityStackSettings extends StackSettings {
 
         this.extraSettings = new HashMap<>();
 
-        switch (this.entityType) {
-            case CHICKEN -> this.putSetting(CHICKEN_MULTIPLY_EGG_DROPS_BY_STACK_SIZE, true);
-            case CREEPER -> this.putSetting(CREEPER_EXPLODE_KILL_ENTIRE_STACK, false);
-            case SHEEP -> {
+        switch (this.entityType.getKey().getKey()) {
+            case "chicken" -> this.putSetting(CHICKEN_MULTIPLY_EGG_DROPS_BY_STACK_SIZE, true);
+            case "creeper" -> this.putSetting(CREEPER_EXPLODE_KILL_ENTIRE_STACK, false);
+            case "sheep" -> {
                 this.putSetting(SHEEP_SHEAR_ALL_SHEEP_IN_STACK, true);
                 this.putSetting(SHEEP_PERCENTAGE_OF_WOOL_TO_REGROW_PER_GRASS_EATEN, 25.0);
             }
-            case SLIME, MAGMA_CUBE -> this.putSetting(SLIME_ACCURATE_DROPS_WITH_KILL_ENTIRE_STACK_ON_DEATH, true);
-        }
-
-        if (this.entityType == VersionUtils.MOOSHROOM) {
-            this.putSetting(MOOSHROOM_DROP_ADDITIONAL_MUSHROOMS_FOR_EACH_COW_IN_STACK, true);
-            this.putSetting(MOOSHROOM_EXTRA_MUSHROOMS_PER_COW_IN_STACK, 5);
+            case "slime", "magma_cube" -> this.putSetting(SLIME_ACCURATE_DROPS_WITH_KILL_ENTIRE_STACK_ON_DEATH, true);
+            case "snowman", "snow_golem" -> this.putSetting(SNOW_GOLEM_FORCE_CUSTOM_NAMED_STACKING, true);
+            case "mooshroom", "mushroom_cow" -> {
+                this.putSetting(MOOSHROOM_DROP_ADDITIONAL_MUSHROOMS_FOR_EACH_COW_IN_STACK, true);
+                this.putSetting(MOOSHROOM_EXTRA_MUSHROOMS_PER_COW_IN_STACK, 5);
+            }
         }
 
         this.setDefaults();
@@ -119,10 +116,10 @@ public class EntityStackSettings extends StackSettings {
         List<String> defaultSpawnRequirements = gson.fromJson(jsonObject.get("default_spawn_requirements").getAsJsonArray(), stringListType);
         String skullTexture = jsonObject.get("skull_texture").getAsString();
         List<String> breedingMaterialsStrings = gson.fromJson(jsonObject.get("breeding_materials").getAsJsonArray(), stringListType);
-        Set<Material> breedingMaterials = breedingMaterialsStrings.stream().map(Material::getMaterial).filter(Objects::nonNull).collect(Collectors.toCollection(() -> EnumSet.noneOf(Material.class)));
+        Set<Material> breedingMaterials = breedingMaterialsStrings.stream().map(Material::getMaterial).filter(Objects::nonNull).collect(Collectors.toSet());
         String spawnCategory = jsonObject.get("spawn_category").getAsString();
         List<String> standardEquipmentStrings = gson.fromJson(jsonObject.get("standard_equipment").getAsJsonArray(), stringListType);
-        Set<Material> standardEquipment = standardEquipmentStrings.stream().map(Material::getMaterial).filter(Objects::nonNull).collect(Collectors.toCollection(() -> EnumSet.noneOf(Material.class)));
+        Set<Material> standardEquipment = standardEquipmentStrings.stream().map(Material::getMaterial).filter(Objects::nonNull).collect(Collectors.toSet());
         this.entityTypeData = new EntityTypeData(isSwimmingMob, isFlyingMob, spawnEggMaterial, defaultSpawnRequirements, skullTexture, breedingMaterials, spawnCategory, standardEquipment);
 
         this.enabled = this.settingsConfiguration.getBoolean("enabled");
@@ -236,32 +233,32 @@ public class EntityStackSettings extends StackSettings {
     public int getMinStackSize() {
         if (this.minStackSize != -1)
             return this.minStackSize;
-        return Setting.ENTITY_MIN_STACK_SIZE.getInt();
+        return SettingKey.ENTITY_MIN_STACK_SIZE.get();
     }
 
     @Override
     public int getMaxStackSize() {
         if (this.maxStackSize != -1)
             return this.maxStackSize;
-        return Setting.ENTITY_MAX_STACK_SIZE.getInt();
+        return SettingKey.ENTITY_MAX_STACK_SIZE.get();
     }
 
     public boolean shouldKillEntireStackOnDeath() {
         if (this.killEntireStackOnDeath != null)
             return this.killEntireStackOnDeath;
-        return Setting.ENTITY_KILL_ENTIRE_STACK_ON_DEATH.getBoolean();
+        return SettingKey.ENTITY_KILL_ENTIRE_STACK_ON_DEATH.get();
     }
 
     public double getMergeRadius() {
         if (this.mergeRadius != -1)
             return this.mergeRadius;
-        return Setting.ENTITY_MERGE_RADIUS.getDouble();
+        return SettingKey.ENTITY_MERGE_RADIUS.get();
     }
 
     public boolean shouldOnlyStackFromSpawners() {
         if (this.onlyStackFromSpawners != null)
             return this.onlyStackFromSpawners;
-        return Setting.ENTITY_ONLY_STACK_FROM_SPAWNERS.getBoolean();
+        return SettingKey.ENTITY_ONLY_STACK_FROM_SPAWNERS.get();
     }
 
     public StackedEntityDataStorageType getStackedEntityDataStorageType() {
@@ -271,7 +268,7 @@ public class EntityStackSettings extends StackSettings {
     public boolean isMobAIDisabled() {
         if (this.disableAllMobAI != null)
             return this.disableAllMobAI;
-        return Setting.ENTITY_DISABLE_ALL_MOB_AI.getBoolean();
+        return SettingKey.ENTITY_DISABLE_ALL_MOB_AI.get();
     }
 
     /**
@@ -300,7 +297,7 @@ public class EntityStackSettings extends StackSettings {
             stackedMob.setTarget(unstackedMob.getTarget());
         }
 
-        if (this.isEntity(Animals.class) && Setting.ENTITY_CUMULATIVE_BREEDING.getBoolean()) {
+        if (this.isEntity(Animals.class) && SettingKey.ENTITY_CUMULATIVE_BREEDING.get()) {
             Animals stackedAnimals = (Animals) stacked;
             Animals unstackedAnimals = (Animals) unstacked;
 
@@ -318,7 +315,7 @@ public class EntityStackSettings extends StackSettings {
         stacked.setLastDamageCause(unstacked.getLastDamageCause());
         NMSAdapter.getHandler().setLastHurtBy(unstacked, stacked.getKiller());
 
-        if (Setting.ENTITY_KILL_TRANSFER_FIRE.getBoolean())
+        if (SettingKey.ENTITY_KILL_TRANSFER_FIRE.get())
             stacked.setFireTicks(unstacked.getFireTicks());
     }
 
@@ -330,10 +327,10 @@ public class EntityStackSettings extends StackSettings {
     public void applySpawnerSpawnedProperties(LivingEntity entity) {
         PersistentDataUtils.tagSpawnedFromSpawner(entity);
 
-        if (this.isEntity(Raider.class) && Setting.SPAWNER_NERF_PATROL_LEADERS.getBoolean())
+        if (this.isEntity(Raider.class) && SettingKey.SPAWNER_NERF_PATROL_LEADERS.get())
             ((Raider) entity).setPatrolLeader(false);
 
-        if (Setting.SPAWNER_REMOVE_EQUIPMENT.getBoolean()) {
+        if (SettingKey.SPAWNER_REMOVE_EQUIPMENT.get()) {
             EntityEquipment equipment = entity.getEquipment();
             if (equipment != null)
                 equipment.clear();
@@ -439,11 +436,11 @@ public class EntityStackSettings extends StackSettings {
         }
 
         public int getInt() {
-            return (int) RoseGardenUtils.getNumber(this.value);
+            return (int) this.value;
         }
 
         public double getDouble() {
-            return RoseGardenUtils.getNumber(this.value);
+            return (double) this.value;
         }
 
     }
