@@ -12,6 +12,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Hoglin;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
@@ -70,6 +71,9 @@ public final class PersistentDataUtils {
                 nmsHandler.removeEntityGoals(entity);
             }
 
+            if (SettingKey.SPAWNER_DISABLE_MOB_AI_OPTIONS_DISABLE_ITEM_PICKUP.get())
+                entity.setCanPickupItems(false);
+
             if (SettingKey.SPAWNER_DISABLE_MOB_AI_OPTIONS_SET_UNAWARE.get() && entity instanceof Mob mob)
                 mob.setAware(!disable);
 
@@ -77,7 +81,7 @@ public final class PersistentDataUtils {
                 entity.setSilent(disable);
 
             if (SettingKey.SPAWNER_DISABLE_MOB_AI_OPTIONS_NO_KNOCKBACK.get()) {
-                AttributeInstance knockbackAttribute = entity.getAttribute(Attribute.GENERIC_KNOCKBACK_RESISTANCE);
+                AttributeInstance knockbackAttribute = entity.getAttribute(VersionUtils.KNOCKBACK_RESISTANCE);
                 if (knockbackAttribute != null)
                     knockbackAttribute.setBaseValue(disable ? Double.MAX_VALUE : 0);
             }

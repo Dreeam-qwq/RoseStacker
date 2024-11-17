@@ -156,23 +156,29 @@ public class StackingThread implements StackingLogic, AutoCloseable {
         if (!entityStackingEnabled || this.stackManager.isEntityUnstackingTemporarilyDisabled())
             return;
 
-        boolean minSplitIfLower = SettingKey.ENTITY_MIN_SPLIT_IF_LOWER.get();
-        for (StackedEntity stackedEntity : this.stackedEntities.values()) {
-            LivingEntity entity = stackedEntity.getEntity();
-            if (!stackedEntity.shouldStayStacked() && entity.isValid()) {
-                ThreadUtils.runSync(() -> {
-                    if (stackedEntity.getStackSize() > 1)
-                        this.splitEntityStack(stackedEntity);
-                });
-            } else if (minSplitIfLower && stackedEntity.getStackSize() < stackedEntity.getStackSettings().getMinStackSize()) {
-                NMSHandler nmsHandler = NMSAdapter.getHandler();
-                StackedEntityDataStorage nbt = stackedEntity.getDataStorage();
-                stackedEntity.setDataStorage(nmsHandler.createEntityDataStorage(entity, this.stackManager.getEntityDataStorageType(entity.getType())));
-                ThreadUtils.runSync(() -> {
-                    for (EntityDataEntry entityDataEntry : nbt.getAll())
-                        entityDataEntry.createEntity(stackedEntity.getLocation(), true, entity.getType());
-                });
-            }
+        for (StackedEntity stackedEntity : this.stackedEntities.values())
+            this.tryUnstackEntity(stackedEntity);
+    }
+
+    @Override
+    public void tryUnstackEntity(StackedEntity stackedEntity) {
+        LivingEntity entity = stackedEntity.getEntity();
+        if (entity == null || stackedEntity.getStackSize() <= 1 || !entity.isValid())
+            return;
+
+        if (!stackedEntity.shouldStayStacked()) {
+            ThreadUtils.runSync(() -> {
+                if (stackedEntity.getStackSize() > 1)
+                    this.splitEntityStack(stackedEntity);
+            });
+        } else if (SettingKey.ENTITY_MIN_SPLIT_IF_LOWER.get() && stackedEntity.getStackSize() < stackedEntity.getStackSettings().getMinStackSize()) {
+            NMSHandler nmsHandler = NMSAdapter.getHandler();
+            StackedEntityDataStorage nbt = stackedEntity.getDataStorage();
+            stackedEntity.setDataStorage(nmsHandler.createEntityDataStorage(entity, this.stackManager.getEntityDataStorageType(entity.getType())));
+            ThreadUtils.runSync(() -> {
+                for (EntityDataEntry entityDataEntry : nbt.getAll())
+                    entityDataEntry.createEntity(stackedEntity.getLocation(), true, entity.getType());
+            });
         }
     }
 
@@ -562,7 +568,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
         if (itemStackSettings != null && !itemStackSettings.isStackingEnabled())
             return null;
 
-        StackedItem newStackedItem = new StackedItem(item.getItemStack().getAmount(), item);
+        StackedItem newStackedItem = new StackedItem(item.getItemStack().getAmount(), item, false);
         this.stackedItems.put(item.getUniqueId(), newStackedItem);
 
         if (tryStack) {
@@ -570,6 +576,10 @@ public class StackingThread implements StackingLogic, AutoCloseable {
             this.tryStackItem(newStackedItem);
             item.removeMetadata(NEW_METADATA, this.rosePlugin);
         }
+
+        // Only update the display after stacking to avoid needing to calculate the name unnecessarily
+        if (newStackedItem.getStackSize() > 0)
+            newStackedItem.updateDisplay();
 
         return newStackedItem;
     }
@@ -994,12 +1004,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
             this.removeEntityStack(toStack);
         }
 
-        Runnable removeTask = () -> removable.stream().map(StackedEntity::getEntity).forEach(Entity::remove);
-        if (Bukkit.isPrimaryThread()) {
-            removeTask.run();
-        } else {
-            ThreadUtils.runSync(removeTask);
-        }
+        ThreadUtils.runOnPrimary(() -> removable.stream().map(StackedEntity::getEntity).forEach(Entity::remove));
     }
 
     /**
@@ -1009,12 +1014,13 @@ public class StackingThread implements StackingLogic, AutoCloseable {
      */
     private void tryStackItem(StackedItem stackedItem) {
         ItemStackSettings stackSettings = stackedItem.getStackSettings();
+        Item item = stackedItem.getItem();
         if (stackSettings == null
                 || !stackSettings.isStackingEnabled()
-                || stackedItem.getItem().getPickupDelay() > 40)
+                || item.getPickupDelay() > 40
+                || PersistentDataUtils.isUnstackable(item))
             return;
 
-        Item item = stackedItem.getItem();
         if (this.isRemoved(item))
             return;
 
@@ -1026,7 +1032,12 @@ public class StackingThread implements StackingLogic, AutoCloseable {
 
         Set<StackedItem> targetItems = new HashSet<>();
         for (Item otherItem : nearbyItems) {
-            if (item == otherItem || otherItem.getPickupDelay() > 40 || !item.getItemStack().isSimilar(otherItem.getItemStack()) || this.isRemoved(otherItem))
+            if (item == otherItem
+                    || otherItem.getPickupDelay() > 40
+                    || !item.getItemStack().isSimilar(otherItem.getItemStack())
+                    || !Objects.equals(item.getOwner(), otherItem.getOwner())
+                    || PersistentDataUtils.isUnstackable(otherItem)
+                    || this.isRemoved(otherItem))
                 continue;
 
             StackedItem other = this.stackedItems.get(otherItem.getUniqueId());
@@ -1055,22 +1066,19 @@ public class StackingThread implements StackingLogic, AutoCloseable {
             if (itemStackEvent.isCancelled())
                 continue;
 
-            increased.increaseStackSize(removed.getStackSize(), true);
+            increased.increaseStackSize(removed.getStackSize(), false);
+            removed.increaseStackSize(-removed.getStackSize(), false);
             if (SettingKey.ITEM_RESET_DESPAWN_TIMER_ON_MERGE.get())
                 increased.getItem().setTicksLived(1); // Reset the 5 minute pickup timer
 
             increased.getItem().setPickupDelay(Math.max(increased.getItem().getPickupDelay(), removed.getItem().getPickupDelay()));
             removed.getItem().setPickupDelay(100); // Don't allow the item we just merged to get picked up or stacked
 
-            Runnable removeTask = () -> removed.getItem().remove();
-            if (Bukkit.isPrimaryThread()) {
-                removeTask.run();
-            } else {
-                ThreadUtils.runSync(removeTask);
-            }
-
+            ThreadUtils.runOnPrimary(() -> removed.getItem().remove());
             this.removeItemStack(removed);
         }
+
+        headStack.updateDisplay();
     }
 
     public void transferExistingEntityStack(UUID entityUUID, StackedEntity stackedEntity, StackingThread toThread) {

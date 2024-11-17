@@ -5,6 +5,7 @@ import dev.rosewood.rosegarden.RosePlugin;
 import dev.rosewood.rosegarden.utils.NMSUtil;
 import dev.rosewood.rosegarden.compatibility.CompatibilityAdapter;
 import dev.rosewood.rosegarden.compatibility.handler.ShearedHandler;
+import dev.rosewood.rosegarden.utils.NMSUtil;
 import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.config.SettingKey;
 import dev.rosewood.rosestacker.event.AsyncEntityDeathEvent;
@@ -18,10 +19,12 @@ import dev.rosewood.rosestacker.stack.StackedItem;
 import dev.rosewood.rosestacker.stack.StackedSpawner;
 import dev.rosewood.rosestacker.stack.settings.EntityStackSettings;
 import dev.rosewood.rosestacker.stack.settings.ItemStackSettings;
+import dev.rosewood.rosestacker.stack.settings.MultikillBound;
 import dev.rosewood.rosestacker.stack.settings.SpawnerStackSettings;
 import dev.rosewood.rosestacker.utils.ContainerUtil;
 import dev.rosewood.rosestacker.utils.ItemUtils;
 import dev.rosewood.rosestacker.utils.PersistentDataUtils;
+import dev.rosewood.rosestacker.utils.StackerUtils;
 import dev.rosewood.rosestacker.utils.ThreadUtils;
 import dev.rosewood.rosestacker.utils.VersionUtils;
 import java.util.ArrayList;
@@ -108,8 +111,9 @@ public class EntityListener implements Listener {
             if (itemStackSettings != null && !itemStackSettings.isStackingEnabled())
                 return;
 
-            this.rosePlugin.getManager(EntityCacheManager.class).preCacheEntity(entity);
-            stackManager.createItemStack(item, true);
+            StackedItem stackedItem = stackManager.createItemStack(item, true);
+            if (stackedItem == null || stackedItem.getStackSize() > 0)
+                this.rosePlugin.getManager(EntityCacheManager.class).preCacheEntity(entity);
         }
     }
 
@@ -124,10 +128,10 @@ public class EntityListener implements Listener {
             return;
 
         Runnable task = () -> {
-            this.rosePlugin.getManager(EntityCacheManager.class).preCacheEntity(entity);
-
             // Try to immediately stack everything except bees from hives and built entities due to them duplicating
             stackManager.createEntityStack(entity, !DELAYED_SPAWN_REASONS.contains(event.getSpawnReason()));
+            if (entity.isValid())
+                this.rosePlugin.getManager(EntityCacheManager.class).preCacheEntity(entity);
 
             PersistentDataUtils.applyDisabledAi(entity);
         };
@@ -150,9 +154,14 @@ public class EntityListener implements Listener {
             return;
 
         PersistentDataUtils.tagSpawnedFromSpawner(entity);
-        this.rosePlugin.getManager(EntityCacheManager.class).preCacheEntity(entity);
-        if (stackManager.isEntityStackingEnabled() && !stackManager.isEntityStackingTemporarilyDisabled())
+        if (stackManager.isEntityStackingEnabled() && !stackManager.isEntityStackingTemporarilyDisabled()) {
             stackManager.createEntityStack(entity, true);
+            if (entity.isValid())
+                this.rosePlugin.getManager(EntityCacheManager.class).preCacheEntity(entity);
+        } else {
+            this.rosePlugin.getManager(EntityCacheManager.class).preCacheEntity(entity);
+        }
+
 
         SpawnerStackSettings stackSettings = this.rosePlugin.getManager(StackSettingManager.class).getSpawnerStackSettings(event.getSpawner());
         StackedSpawner stackedSpawner = stackManager.getStackedSpawner(event.getSpawner().getBlock());
@@ -235,7 +244,7 @@ public class EntityListener implements Listener {
         if ((damager instanceof Projectile projectile && !(projectile.getShooter() instanceof Player)) || !(damager instanceof Player))
             return;
 
-        AttributeInstance attributeInstance = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        AttributeInstance attributeInstance = entity.getAttribute(VersionUtils.MAX_HEALTH);;
         if (attributeInstance != null) {
             event.setDamage(attributeInstance.getValue() * 2);
         } else {
@@ -337,7 +346,8 @@ public class EntityListener implements Listener {
         if (stackedEntity == null)
             return;
 
-        if (stackedEntity.getStackSize() == 1) {
+        int stackSize = stackedEntity.getStackSize();
+        if (stackSize == 1) {
             stackManager.removeEntityStack(stackedEntity);
             return;
         }
@@ -352,9 +362,7 @@ public class EntityListener implements Listener {
         Runnable task = () -> {
             // Should we kill multiple entities?
             if (SettingKey.ENTITY_MULTIKILL_ENABLED.get()) {
-                int multikillAmount = SettingKey.ENTITY_MULTIKILL_AMOUNT.get();
-                int killAmount = 1;
-
+                int enchantmentMultiplier = 1;
                 if (!SettingKey.ENTITY_MULTIKILL_PLAYER_ONLY.get() || entity.getKiller() != null) {
                     if (SettingKey.ENTITY_MULTIKILL_ENCHANTMENT_ENABLED.get()) {
                         Enchantment requiredEnchantment = Enchantment.getByKey(NamespacedKey.fromString(SettingKey.ENTITY_MULTIKILL_ENCHANTMENT_TYPE.get()));
@@ -363,16 +371,27 @@ public class EntityListener implements Listener {
                             RoseStacker.getInstance().getLogger().warning("Invalid multikill enchantment type: " + SettingKey.ENTITY_MULTIKILL_ENCHANTMENT_TYPE.get());
                         } else if (event != null && event.getEntity().getKiller() != null) {
                             Player killer = event.getEntity().getKiller();
-                            int enchantmentLevel = killer.getInventory().getItemInMainHand().getEnchantmentLevel(requiredEnchantment);
-                            if (enchantmentLevel > 0)
-                                killAmount = multikillAmount * enchantmentLevel;
+                            enchantmentMultiplier = killer.getInventory().getItemInMainHand().getEnchantmentLevel(requiredEnchantment);
                         }
-                    } else {
-                        killAmount = multikillAmount;
                     }
                 }
 
-                stackedEntity.killPartialStack(event, killAmount);
+                MultikillBound lowerBound = stackManager.getLowerMultikillBound();
+                MultikillBound upperBound = stackManager.getUpperMultikillBound();
+
+                int lowerValue = lowerBound.getValue(stackSize);
+                int upperValue = upperBound.getValue(stackSize);
+                if (upperValue < lowerValue)
+                    upperValue = lowerValue;
+
+                int targetAmount = StackerUtils.randomInRange(lowerValue, upperValue);
+                int killAmount = Math.max(1, targetAmount * enchantmentMultiplier);
+
+                if (killAmount >= stackSize) {
+                    stackedEntity.killEntireStack(event);
+                } else {
+                    stackedEntity.killPartialStack(event, killAmount);
+                }
             } else {
                 // Decrease stack size by 1
                 stackedEntity.decreaseStackSize();
@@ -434,7 +453,7 @@ public class EntityListener implements Listener {
             return;
 
         if (SettingKey.ENTITY_TRANSFORM_ENTIRE_STACK.get()) {
-            EntityDataEntry serialized = EntityDataEntry.of(transformedEntity);
+            EntityDataEntry serialized = EntityDataEntry.createFromEntityNBT(transformedEntity);
             event.setCancelled(true);
 
             // Handle mooshroom shearing
