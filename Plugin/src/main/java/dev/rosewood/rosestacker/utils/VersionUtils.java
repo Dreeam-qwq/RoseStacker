@@ -22,9 +22,9 @@ public class VersionUtils {
     public static final Enchantment INFINITY;
     public static final Enchantment SWEEPING_EDGE;
     public static final ItemFlag HIDE_ADDITIONAL_TOOLTIP;
-    public static final Attribute MAX_HEALTH;
-    public static final Attribute KNOCKBACK_RESISTANCE;
-    public static final Attribute LUCK;
+    public static Attribute MAX_HEALTH = null;
+    public static Attribute KNOCKBACK_RESISTANCE = null;
+    public static Attribute LUCK = null;
     static {
         if (NMSUtil.getVersionNumber() > 20 || (NMSUtil.getVersionNumber() == 20 && NMSUtil.getMinorVersionNumber() >= 5)) {
             ITEM = EntityType.ITEM;
@@ -53,9 +53,14 @@ public class VersionUtils {
             KNOCKBACK_RESISTANCE = Attribute.KNOCKBACK_RESISTANCE;
             LUCK = Attribute.LUCK;
         } else {
-            MAX_HEALTH = Attribute.valueOf("generic.max_health");
-            KNOCKBACK_RESISTANCE = Attribute.valueOf("generic.knockback_resistance");
-            LUCK = Attribute.valueOf("generic.luck");
+            try {
+                Class clazz = Class.forName("org.bukkit.attribute.Attribute");
+
+                MAX_HEALTH = (Attribute) Enum.valueOf(clazz, "GENERIC_MAX_HEALTH");
+                KNOCKBACK_RESISTANCE = (Attribute) Enum.valueOf(clazz, "GENERIC_KNOCKBACK_RESISTANCE");
+                LUCK = (Attribute) Enum.valueOf(clazz, "GENERIC_LUCK");
+            } catch (ClassNotFoundException ignored) {
+            }
         }
     }
 

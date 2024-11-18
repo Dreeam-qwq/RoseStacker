@@ -1,5 +1,6 @@
 package dev.rosewood.rosestacker.stack.settings.conditions.spawner.tags;
 
+import dev.rosewood.rosegarden.utils.NMSUtil;
 import dev.rosewood.rosestacker.manager.LocaleManager;
 import dev.rosewood.rosestacker.stack.StackedSpawner;
 import dev.rosewood.rosestacker.stack.settings.conditions.spawner.ConditionTag;
@@ -29,11 +30,27 @@ public class BiomeConditionTag extends ConditionTag {
         if (values.length == 0)
             return false;
 
-        for (String value : values) {
+        if (NMSUtil.getVersionNumber() > 21 || NMSUtil.getVersionNumber() == 21 && NMSUtil.getMinorVersionNumber() >= 3) {
+            for (String value : values) {
+                try {
+                    Biome biome = Biome.valueOf(value.toUpperCase());
+                    this.biomes.add(biome);
+                } catch (Exception ignored) {
+                }
+            }
+        } else {
             try {
-                Biome biome = Biome.valueOf(value.toUpperCase());
-                this.biomes.add(biome);
-            } catch (Exception ignored) { }
+                Class clazz = Class.forName("org.bukkit.block.Biome");
+                for (String value : values) {
+                    try {
+                        Biome biome = (Biome) Enum.valueOf(clazz, value.toUpperCase());
+                        this.biomes.add(biome);
+                    } catch (Exception ignored) {
+                    }
+                }
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
         }
 
         return !this.biomes.isEmpty();
