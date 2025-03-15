@@ -13,6 +13,7 @@ import dev.rosewood.rosestacker.listener.EntitiesLoadListener;
 import dev.rosewood.rosestacker.listener.EntityListener;
 import dev.rosewood.rosestacker.listener.InteractListener;
 import dev.rosewood.rosestacker.listener.ItemListener;
+import dev.rosewood.rosestacker.listener.SkyblockHookListener;
 import dev.rosewood.rosestacker.listener.StackToolListener;
 import dev.rosewood.rosestacker.listener.WorldListener;
 import dev.rosewood.rosestacker.manager.CommandManager;
@@ -89,7 +90,7 @@ public class RoseStacker extends RosePlugin {
 
     @Override
     public void disable() {
-        Bukkit.getScheduler().cancelTasks(this);
+        this.getScheduler().cancelAllTasks();
     }
 
     @Override

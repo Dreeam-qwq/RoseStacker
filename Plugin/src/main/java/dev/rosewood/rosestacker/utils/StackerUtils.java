@@ -21,7 +21,6 @@ import org.bukkit.Material;
 import org.bukkit.Particle.DustOptions;
 import org.bukkit.Tag;
 import org.bukkit.World;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.ExperienceOrb;
@@ -33,8 +32,8 @@ import org.bukkit.permissions.PermissionAttachmentInfo;
 public final class StackerUtils {
 
     public static final String MIN_SUPPORTED_VERSION = "1.16.5";
-    public static final String MAX_SUPPORTED_VERSION = "1.21.3";
-    public static final String MAX_SUPPORTED_LOCALE_VERSION = "1.21.3";
+    public static final String MAX_SUPPORTED_VERSION = "1.21.4";
+    public static final String MAX_SUPPORTED_LOCALE_VERSION = "1.21.4";
 
     public static final int ASSUMED_ENTITY_VISIBILITY_RANGE = 75 * 75;
 
@@ -164,14 +163,24 @@ public final class StackerUtils {
                 .filter(Material::isBlock)
                 .filter(Material::isItem)
                 .filter(Material::isSolid)
-                .filter(x -> !x.isInteractable() || x == Material.SPAWNER || x == Material.TNT || x == Material.BEACON || x.name().endsWith("REDSTONE_ORE"))
-                .filter(x -> !x.hasGravity())
+                .filter(x -> !isInteractable(x))
                 .filter(x -> !Tag.CORAL_PLANTS.isTagged(x))
                 .filter(x -> !Tag.SLABS.isTagged(x))
                 .filter(x -> !Tag.BANNERS.isTagged(x))
                 .filter(x -> !x.name().endsWith("_WALL")) // Tags for these don't exist in older versions
                 .filter(x -> !x.name().endsWith("_PRESSURE_PLATE"))
                 .sorted(Comparator.comparing(Enum::name)).toList();
+    }
+
+    public static boolean isInteractable(Material material) {
+        return switch (material.getKey().getKey()) {
+            case "redstone_ore",
+                 "deepslate_redstone_ore",
+                 "beacon",
+                 "tnt",
+                 "dragon_egg" -> false;
+            default -> material.isInteractable();
+        };
     }
 
     /**

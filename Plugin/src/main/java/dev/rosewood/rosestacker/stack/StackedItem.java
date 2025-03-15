@@ -24,10 +24,7 @@ public class StackedItem extends Stack<ItemStackSettings> implements Comparable<
     private Item item;
 
     private ItemStackSettings stackSettings;
-
-    public StackedItem(int size, Item item) {
-        this(size, item, true);
-    }
+    private double x, y, z;
 
     public StackedItem(int size, Item item, boolean updateDisplay) {
         this.size = size;
@@ -36,9 +33,13 @@ public class StackedItem extends Stack<ItemStackSettings> implements Comparable<
         if (this.item != null) {
             this.stackSettings = RoseStacker.getInstance().getManager(StackSettingManager.class).getItemStackSettings(this.item);
 
-            if (updateDisplay && Bukkit.isPrimaryThread())
+            if (updateDisplay)
                 this.updateDisplay();
         }
+    }
+
+    public StackedItem(int size, Item item) {
+        this(size, item, true);
     }
 
     public Item getItem() {
@@ -94,14 +95,17 @@ public class StackedItem extends Stack<ItemStackSettings> implements Comparable<
             return;
         }
 
-        ItemMeta itemMeta = itemStack.getItemMeta();
-
         String displayName = null;
-        boolean hasCustomName = itemMeta != null && itemMeta.hasDisplayName();
-        if (hasCustomName && SettingKey.ITEM_DISPLAY_CUSTOM_NAMES.get()) {
-            displayName = itemMeta.getDisplayName();
-        } else if (NMSUtil.getVersionNumber() >= 21 && itemMeta.hasItemName()) { // Support item_name component in 1.21+
-            displayName = itemMeta.getItemName();
+        boolean hasCustomName = false;
+        ItemMeta itemMeta = itemStack.getItemMeta();
+        if (itemMeta != null) {
+            if (itemMeta.hasDisplayName() && SettingKey.ITEM_DISPLAY_CUSTOM_NAMES.get()) {
+                displayName = itemMeta.getDisplayName();
+                hasCustomName = true;
+            } else if (NMSUtil.getVersionNumber() >= 21 && itemMeta.hasItemName()) { // Support item_name component in 1.21+
+                displayName = itemMeta.getItemName();
+                hasCustomName = true;
+            }
         }
 
         if (displayName != null && !SettingKey.ITEM_DISPLAY_CUSTOM_NAMES_COLOR.get())
@@ -165,6 +169,20 @@ public class StackedItem extends Stack<ItemStackSettings> implements Comparable<
             return entity1.getTicksLived() > entity2.getTicksLived() ? 2 : -2;
 
         return this.getStackSize() > stack2.getStackSize() ? 1 : -1;
+    }
+
+    /**
+     * @return true if the entity has moved since the last time this method was called, false otherwise
+     */
+    public boolean hasMoved() {
+        Location location = this.item.getLocation();
+        boolean moved = location.getX() != this.x || location.getY() != this.y || location.getZ() != this.z;
+        if (moved) {
+            this.x = location.getX();
+            this.y = location.getY();
+            this.z = location.getZ();
+        }
+        return moved;
     }
 
 }

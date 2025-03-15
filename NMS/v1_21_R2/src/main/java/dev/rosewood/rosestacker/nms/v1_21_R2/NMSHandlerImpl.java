@@ -9,6 +9,7 @@ import dev.rosewood.rosestacker.nms.spawner.StackedSpawnerTile;
 import dev.rosewood.rosestacker.nms.storage.EntityDataEntry;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorage;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorageType;
+import dev.rosewood.rosestacker.nms.storage.StorageMigrationType;
 import dev.rosewood.rosestacker.nms.util.ReflectionUtils;
 import dev.rosewood.rosestacker.nms.v1_21_R2.entity.SoloEntitySpider;
 import dev.rosewood.rosestacker.nms.v1_21_R2.entity.SoloEntityStrider;
@@ -29,7 +30,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
@@ -76,10 +76,8 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.RegionAccessor;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.craftbukkit.v1_21_R2.CraftRegionAccessor;
 import org.bukkit.craftbukkit.v1_21_R2.CraftWorld;
 import org.bukkit.craftbukkit.v1_21_R2.entity.CraftAbstractVillager;
 import org.bukkit.craftbukkit.v1_21_R2.entity.CraftCreeper;
@@ -421,9 +419,9 @@ public class NMSHandlerImpl implements NMSHandler {
         };
     }
 
-    public StackedEntityDataStorage deserializeEntityDataStorage(LivingEntity livingEntity, byte[] data, StackedEntityDataStorageType storageType) {
+    public StackedEntityDataStorage deserializeEntityDataStorage(LivingEntity livingEntity, byte[] data, StackedEntityDataStorageType storageType, Set<StorageMigrationType> migrations) {
         return switch (storageType) {
-            case NBT -> new NBTStackedEntityDataStorage(livingEntity, data);
+            case NBT -> new NBTStackedEntityDataStorage(livingEntity, data, migrations);
             case SIMPLE -> new SimpleStackedEntityDataStorage(livingEntity, data);
         };
     }
