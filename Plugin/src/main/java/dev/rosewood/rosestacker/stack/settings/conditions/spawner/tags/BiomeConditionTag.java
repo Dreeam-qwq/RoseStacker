@@ -1,6 +1,5 @@
 package dev.rosewood.rosestacker.stack.settings.conditions.spawner.tags;
 
-import dev.rosewood.rosegarden.utils.NMSUtil;
 import dev.rosewood.rosestacker.manager.LocaleManager;
 import dev.rosewood.rosestacker.stack.StackedSpawner;
 import dev.rosewood.rosestacker.stack.settings.conditions.spawner.ConditionTag;
@@ -29,6 +28,7 @@ public class BiomeConditionTag extends ConditionTag {
 
         if (values.length == 0)
             return false;
+
 
         for (String value : values) {
             Biome biome = VersionUtils.getBiome(value);

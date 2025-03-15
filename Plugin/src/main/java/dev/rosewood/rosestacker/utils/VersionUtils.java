@@ -23,9 +23,9 @@ public class VersionUtils {
     public static final Enchantment INFINITY;
     public static final Enchantment SWEEPING_EDGE;
     public static final ItemFlag HIDE_ADDITIONAL_TOOLTIP;
-    public static Attribute MAX_HEALTH = null;
-    public static Attribute KNOCKBACK_RESISTANCE = null;
-    public static Attribute LUCK = null;
+    public static final Attribute MAX_HEALTH;
+    public static final Attribute KNOCKBACK_RESISTANCE;
+    public static final Attribute LUCK;
     static {
         if (NMSUtil.getVersionNumber() > 20 || (NMSUtil.getVersionNumber() == 20 && NMSUtil.getMinorVersionNumber() >= 5)) {
             ITEM = EntityType.ITEM;
