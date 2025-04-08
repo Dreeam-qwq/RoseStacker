@@ -98,7 +98,7 @@ public class EntityListener implements Listener {
     public void onEntitySpawn(EntitySpawnEvent event) {
         Entity entity = event.getEntity();
         StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isWorldDisabled(entity.getWorld()))
+        if (stackManager.isAreaDisabled(entity.getLocation()))
             return;
 
         if (!stackManager.isItemStackingEnabled() || stackManager.isEntityStackingTemporarilyDisabled())
@@ -119,7 +119,7 @@ public class EntityListener implements Listener {
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         LivingEntity entity = event.getEntity();
         StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isWorldDisabled(entity.getWorld()))
+        if (stackManager.isAreaDisabled(entity.getLocation()))
             return;
 
         if (!stackManager.isEntityStackingEnabled() || stackManager.isEntityStackingTemporarilyDisabled())
@@ -147,7 +147,7 @@ public class EntityListener implements Listener {
             return;
 
         StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isWorldDisabled(event.getEntity().getWorld()))
+        if (stackManager.isAreaDisabled(event.getEntity().getLocation()))
             return;
 
         this.rosePlugin.getManager(EntityCacheManager.class).preCacheEntity(entity);
@@ -192,7 +192,7 @@ public class EntityListener implements Listener {
             return;
 
         StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isWorldDisabled(event.getEntity().getWorld()))
+        if (stackManager.isAreaDisabled(event.getEntity().getLocation()))
             return;
 
         Entity entity = event.getEntity();
@@ -230,7 +230,7 @@ public class EntityListener implements Listener {
             return;
 
         StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (!SettingKey.ENTITY_INSTANT_KILL_DISABLED_AI.get() || stackManager.isWorldDisabled(entity.getWorld()) || !PersistentDataUtils.isAiDisabled(entity))
+        if (!SettingKey.ENTITY_INSTANT_KILL_DISABLED_AI.get() || stackManager.isAreaDisabled(entity.getLocation()) || !PersistentDataUtils.isAiDisabled(entity))
             return;
 
         Entity damager = event.getDamager();
@@ -259,7 +259,7 @@ public class EntityListener implements Listener {
         if (!(event.getEntity() instanceof LivingEntity entity) || event.getEntity().getType() == EntityType.ARMOR_STAND || event.getEntity().getType() == EntityType.PLAYER)
             return;
 
-        if (stackManager.isWorldDisabled(entity.getWorld()))
+        if (stackManager.isAreaDisabled(entity.getLocation()))
             return;
 
         if (!stackManager.isEntityStackingEnabled())
@@ -329,7 +329,7 @@ public class EntityListener implements Listener {
 
     private void handleEntityDeath(EntityDeathEvent event, LivingEntity entity) {
         StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isWorldDisabled(entity.getWorld()))
+        if (stackManager.isAreaDisabled(entity.getLocation()))
             return;
 
         if (!stackManager.isEntityStackingEnabled())
@@ -422,7 +422,7 @@ public class EntityListener implements Listener {
     private void handleEntityTransformation(EntityTransformEvent event) {
         StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
         StackSettingManager stackSettingManager = this.rosePlugin.getManager(StackSettingManager.class);
-        if (stackManager.isWorldDisabled(event.getEntity().getWorld()))
+        if (stackManager.isAreaDisabled(event.getEntity().getLocation()))
             return;
 
         if (!stackManager.isEntityStackingEnabled())
@@ -509,7 +509,7 @@ public class EntityListener implements Listener {
             return;
 
         StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isWorldDisabled(event.getEntity().getWorld()))
+        if (stackManager.isAreaDisabled(event.getEntity().getLocation()))
             return;
 
         if (!stackManager.isEntityStackingEnabled())
@@ -553,7 +553,7 @@ public class EntityListener implements Listener {
             return;
 
         StackManager stackManager = rosePlugin.getManager(StackManager.class);
-        if (stackManager.isWorldDisabled(entity.getWorld()))
+        if (stackManager.isAreaDisabled(entity.getLocation()))
             return;
 
         if (!stackManager.isEntityStackingEnabled())
@@ -606,7 +606,7 @@ public class EntityListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onSheepRegrowWool(SheepRegrowWoolEvent event) {
         StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isWorldDisabled(event.getEntity().getWorld()))
+        if (stackManager.isAreaDisabled(event.getEntity().getLocation()))
             return;
 
         if (!stackManager.isEntityStackingEnabled())

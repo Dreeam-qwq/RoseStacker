@@ -2,6 +2,7 @@ package dev.rosewood.rosestacker.stack;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import dev.rosewood.guiframework.framework.util.GuiUtil;
 import dev.rosewood.rosegarden.RosePlugin;
 import dev.rosewood.rosegarden.compatibility.CompatibilityAdapter;
 import dev.rosewood.rosegarden.scheduler.task.ScheduledTask;
@@ -188,10 +189,11 @@ public class StackingThread implements StackingLogic, AutoCloseable {
                 continue;
 
             if (entity instanceof LivingEntity livingEntity && entity.getType() != EntityType.ARMOR_STAND && entity.getType() != EntityType.PLAYER && !this.isEntityStacked(livingEntity)) {
-                this.createEntityStack(livingEntity, false);
+                if (!this.stackManager.isAreaDisabled(entity.getLocation()))
+                    this.createEntityStack(livingEntity, false);
             } else if (entity.getType() == VersionUtils.ITEM) {
                 Item item = (Item) entity;
-                if (!this.isItemStacked(item))
+                if (!this.isItemStacked(item) && !this.stackManager.isAreaDisabled(entity.getLocation()))
                     this.createItemStack(item, false);
             }
         }
@@ -288,7 +290,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
 
             if (this.dynamicItemTags) {
                 for (Item item : items) {
-                    if (item.getCustomName() == null || !item.isCustomNameVisible())
+                    if (!item.isCustomNameVisible())
                         continue;
 
                     double distanceSqrd;
@@ -782,6 +784,13 @@ public class StackingThread implements StackingLogic, AutoCloseable {
     public StackedItem dropItemStack(ItemStack itemStack, int amount, Location location, boolean dropNaturally) {
         if (location.getWorld() == null)
             return null;
+
+        if (!this.stackManager.isItemStackingEnabled()) {
+            ItemStack clone = itemStack.clone();
+            clone.setAmount(amount);
+            this.preStackItems(List.of(clone), location, dropNaturally);
+            return null;
+        }
 
         this.stackManager.setEntityStackingTemporarilyDisabled(true);
 

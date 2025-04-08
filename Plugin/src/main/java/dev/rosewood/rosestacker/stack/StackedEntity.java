@@ -3,6 +3,7 @@ package dev.rosewood.rosestacker.stack;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import dev.rosewood.rosegarden.utils.EntitySpawnUtil;
+import dev.rosewood.rosegarden.utils.NMSUtil;
 import dev.rosewood.rosegarden.utils.StringPlaceholders;
 import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.api.RoseStackerAPI;
@@ -41,6 +42,7 @@ import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.ExperienceOrb;
+import org.bukkit.entity.Frog;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.Player;
@@ -281,7 +283,7 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
 
             Runnable finishTask = () -> {
                 Location location = this.entity.getLocation();
-                    RoseStacker.getInstance().getManager(StackManager.class).preStackItems(drops.getDrops(), location, false);
+                RoseStacker.getInstance().getManager(StackManager.class).preStackItems(drops.getDrops(), location, false);
                 int finalDroppedExp = drops.getExperience();
                 if (SettingKey.ENTITY_DROP_ACCURATE_EXP.get() && finalDroppedExp > 0)
                     StackerUtils.dropExperience(location, finalDroppedExp, finalDroppedExp, finalDroppedExp / 2);
@@ -421,6 +423,7 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
         boolean fromSpawner = PersistentDataUtils.isSpawnedFromSpawner(this.entity);
         Location location = mainEntity.getLocation();
         Player killer = propagateKiller ? mainEntity.getKiller() : null;
+        Entity froglightKiller = NMSUtil.getVersionNumber() >= 19 && mainEntity.getType() == EntityType.MAGMA_CUBE && mainEntity.getLastDamageCause() instanceof EntityDamageByEntityEvent damageEvent && damageEvent.getDamager().getType() == EntityType.FROG ? damageEvent.getDamager() : null;
         boolean callEvents = !RoseStackerAPI.getInstance().isEntityStackMultipleDeathEventCalled();
         boolean isAnimal = mainEntity instanceof Animals;
         boolean isWither = mainEntity.getType() == EntityType.WITHER;
@@ -474,6 +477,20 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
                     entityItems.add(new ItemStack(Material.NETHER_STAR));
                 if (killedByWither)
                     entityItems.add(new ItemStack(Material.WITHER_ROSE));
+                if (froglightKiller != null) {
+                    Frog frog = (Frog) froglightKiller;
+                    Material froglightType = switch (frog.getVariant().getKey().getKey()) {
+                        case "cold" -> Material.VERDANT_FROGLIGHT;
+                        case "temperate" -> Material.OCHRE_FROGLIGHT;
+                        case "warm" -> Material.PEARLESCENT_FROGLIGHT;
+                        default -> {
+                            RoseStacker.getInstance().getLogger().warning("Unhandled frog type: " + frog.getVariant().getKey());
+                            yield null;
+                        }
+                    };
+                    if (froglightType != null)
+                        entityItems.add(new ItemStack(froglightType));
+                }
 
                 int entityExperience;
                 if (callEvents) {
@@ -744,8 +761,8 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
      * @return true if multiple entities are dying during this event, false otherwise
      */
     public boolean areMultipleEntitiesDying(@NotNull EntityDeathEvent event) {
-        // Don't ignore if single entity kill or not a stack
-        if (!SettingKey.ENTITY_TRIGGER_DEATH_EVENT_FOR_ENTIRE_STACK_KILL.get()
+        // Individual events will be called if we are triggering death events
+        if (SettingKey.ENTITY_TRIGGER_DEATH_EVENT_FOR_ENTIRE_STACK_KILL.get()
                 || !SettingKey.ENTITY_DROP_ACCURATE_ITEMS.get()
                 || this.getStackSize() == 1)
             return false;
