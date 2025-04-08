@@ -503,6 +503,21 @@ public class NMSHandlerImpl implements NMSHandler {
     }
 
     @Override
+    public List<ItemStack> getBoxContents(Item item) {
+        net.minecraft.world.item.ItemStack itemStack = CraftItemStack.asNMSCopy(item.getItemStack());
+        net.minecraft.world.item.component.ItemContainerContents contents = itemStack.set(DataComponents.CONTAINER, net.minecraft.world.item.component.ItemContainerContents.EMPTY);
+
+        if (contents != null) {
+            return contents.stream()
+                    .filter(x -> !x.isEmpty())
+                    .map(CraftItemStack::asBukkitCopy)
+                    .toList();
+        }
+
+        return new ArrayList<>();
+    }
+
+    @Override
     public List<org.bukkit.entity.Entity> getEntities(World world) {
         CraftWorld craftWorld = (CraftWorld) world;
         List<org.bukkit.entity.Entity> entities = new ArrayList<>();
