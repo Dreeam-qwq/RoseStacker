@@ -2,7 +2,6 @@ package dev.rosewood.rosestacker.stack;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import dev.rosewood.guiframework.framework.util.GuiUtil;
 import dev.rosewood.rosegarden.RosePlugin;
 import dev.rosewood.rosegarden.compatibility.CompatibilityAdapter;
 import dev.rosewood.rosegarden.scheduler.task.ScheduledTask;
@@ -330,6 +329,9 @@ public class StackingThread implements StackingLogic, AutoCloseable {
 
         if (this.entityCleanupTask != null)
             this.entityCleanupTask.cancel();
+
+        // Save all data
+        this.saveAllData(true);
     }
 
     @Override
@@ -904,11 +906,32 @@ public class StackingThread implements StackingLogic, AutoCloseable {
 
     @Override
     public void saveChunkEntities(List<Entity> entities, boolean clearStored) {
+        List<Stack<?>> stacks = new ArrayList<>(entities.size());
         if (this.stackManager.isEntityStackingEnabled()) {
-            List<StackedEntity> stackedEntities = entities.stream()
+            stacks.addAll(entities.stream()
                     .filter(x -> x instanceof LivingEntity && x.getType() != EntityType.ARMOR_STAND && x.getType() != EntityType.PLAYER)
                     .map(x -> this.stackedEntities.get(x.getUniqueId()))
                     .filter(Objects::nonNull)
+                    .toList());
+        }
+
+        if (this.stackManager.isItemStackingEnabled()) {
+            stacks.addAll(entities.stream()
+                    .filter(x -> x.getType() == VersionUtils.ITEM)
+                    .map(x -> this.stackedItems.get(x.getUniqueId()))
+                    .filter(Objects::nonNull)
+                    .toList());
+        }
+
+        this.saveChunkEntityStacks(stacks, clearStored);
+    }
+
+    @Override
+    public <T extends Stack<?>> void saveChunkEntityStacks(List<T> stacks, boolean clearStored) {
+        if (this.stackManager.isEntityStackingEnabled()) {
+            List<StackedEntity> stackedEntities = stacks.stream()
+                    .filter(x -> x instanceof StackedEntity)
+                    .map(x -> (StackedEntity) x)
                     .toList();
 
             stackedEntities.forEach(DataUtils::writeStackedEntity);
@@ -918,10 +941,9 @@ public class StackingThread implements StackingLogic, AutoCloseable {
         }
 
         if (this.stackManager.isItemStackingEnabled()) {
-            List<StackedItem> stackedItems = entities.stream()
-                    .filter(x -> x.getType() == VersionUtils.ITEM)
-                    .map(x -> this.stackedItems.get(x.getUniqueId()))
-                    .filter(Objects::nonNull)
+            List<StackedItem> stackedItems = stacks.stream()
+                    .filter(x -> x instanceof StackedItem)
+                    .map(x -> (StackedItem) x)
                     .toList();
 
             stackedItems.forEach(DataUtils::writeStackedItem);
@@ -935,13 +957,19 @@ public class StackingThread implements StackingLogic, AutoCloseable {
     public void saveAllData(boolean clearStored) {
         // Save stacked blocks and spawners
         for (Chunk chunk : this.stackChunkData.keySet())
-            this.saveChunkBlocks(chunk, clearStored);
+            this.saveChunkBlocks(chunk, false);
 
         // Save stacked entities and items
-        List<Entity> entities = new ArrayList<>(this.stackedEntities.size() + this.stackedItems.size());
-        this.stackedEntities.values().stream().map(StackedEntity::getEntity).forEach(entities::add);
-        this.stackedItems.values().stream().map(StackedItem::getItem).forEach(entities::add);
-        this.saveChunkEntities(entities, clearStored);
+        List<Stack<?>> stacks = new ArrayList<>(this.stackedEntities.size() + this.stackedItems.size());
+        stacks.addAll(this.stackedEntities.values());
+        stacks.addAll(this.stackedItems.values());
+        this.saveChunkEntityStacks(stacks, false);
+
+        if (clearStored) {
+            this.stackChunkData.clear();
+            this.stackedEntities.clear();
+            this.stackedItems.clear();
+        }
     }
 
     /**
@@ -949,7 +977,8 @@ public class StackingThread implements StackingLogic, AutoCloseable {
      *
      * @param stackedEntity the StackedEntity to try to stack
      */
-    private void tryStackEntity(StackedEntity stackedEntity) {
+    @Override
+    public void tryStackEntity(StackedEntity stackedEntity) {
         EntityStackSettings stackSettings = stackedEntity.getStackSettings();
         if (stackSettings == null)
             return;
@@ -1032,12 +1061,8 @@ public class StackingThread implements StackingLogic, AutoCloseable {
         ThreadUtils.runOnPrimary(() -> removable.stream().map(StackedEntity::getEntity).forEach(Entity::remove));
     }
 
-    /**
-     * Tries to stack a StackedItem with all other StackedItems
-     *
-     * @param stackedItem the StackedItem to try to stack
-     */
-    private void tryStackItem(StackedItem stackedItem) {
+    @Override
+    public void tryStackItem(StackedItem stackedItem) {
         ItemStackSettings stackSettings = stackedItem.getStackSettings();
         Item item = stackedItem.getItem();
         if (stackSettings == null

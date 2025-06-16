@@ -1,5 +1,7 @@
 package dev.rosewood.rosestacker.spawning;
 
+import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
+import dev.rosewood.rosegarden.utils.NMSUtil;
 import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.config.SettingKey;
 import dev.rosewood.rosestacker.event.PreStackedSpawnerSpawnEvent;
@@ -23,6 +25,7 @@ import dev.rosewood.rosestacker.utils.VersionUtils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -89,7 +92,7 @@ public class MobSpawningMethod implements SpawningMethod {
         EntityCacheManager entityCacheManager = RoseStacker.getInstance().getManager(EntityCacheManager.class);
         StackManager stackManager = RoseStacker.getInstance().getManager(StackManager.class);
 
-        ThreadUtils.runAsync(() -> {
+        Runnable spawnTask = () -> {
             // Make sure the chunk is still loaded
             if (!stackedSpawner.getWorld().isChunkLoaded(stackedSpawner.getLocation().getBlockX() >> 4, stackedSpawner.getLocation().getBlockZ() >> 4))
                 return;
@@ -185,7 +188,13 @@ public class MobSpawningMethod implements SpawningMethod {
                         PersistentDataUtils.increaseSpawnCount(spawnerTile, successfulSpawns);
                 });
             }
-        });
+        };
+
+        if (SettingKey.SPAWNER_SPAWN_ASYNC.get()) {
+            ThreadUtils.runAsync(spawnTask);
+        } else {
+            spawnTask.run();
+        }
     }
 
     private int spawnEntitiesIndividually(StackedSpawner stackedSpawner, int spawnAmount, Set<Location> locations, StackManager stackManager, EntityStackSettings entityStackSettings) {
@@ -208,6 +217,15 @@ public class MobSpawningMethod implements SpawningMethod {
                     break;
 
                 Location location = possibleLocations.get(this.random.nextInt(possibleLocations.size()));
+                if (NMSUtil.isPaper()) {
+                    PreCreatureSpawnEvent preCreatureSpawnEvent = new PreCreatureSpawnEvent(location, this.entityType, CreatureSpawnEvent.SpawnReason.SPAWNER);
+                    Bukkit.getPluginManager().callEvent(preCreatureSpawnEvent);
+                    if (preCreatureSpawnEvent.shouldAbortSpawn())
+                        return;
+                    if (preCreatureSpawnEvent.isCancelled())
+                        continue;
+                }
+
                 LivingEntity entity = nmsHandler.spawnEntityWithReason(this.entityType, location, CreatureSpawnEvent.SpawnReason.SPAWNER, SettingKey.SPAWNER_BYPASS_REGION_SPAWNING_RULES.get());
 
                 SpawnerSpawnEvent spawnerSpawnEvent = new SpawnerSpawnEvent(entity, stackedSpawner.getSpawner());
@@ -302,8 +320,23 @@ public class MobSpawningMethod implements SpawningMethod {
 
         ThreadUtils.runSync(() -> {
             stackManager.setEntityStackingTemporarilyDisabled(true);
-            for (StackedEntity stackedEntity : newStacks) {
+            Iterator<StackedEntity> iterator = newStacks.iterator();
+            while (iterator.hasNext()) {
+                StackedEntity stackedEntity = iterator.next();
                 LivingEntity entity = stackedEntity.getEntity();
+
+                if (NMSUtil.isPaper()) {
+                    PreCreatureSpawnEvent preCreatureSpawnEvent = new PreCreatureSpawnEvent(entity.getLocation(), this.entityType, CreatureSpawnEvent.SpawnReason.SPAWNER);
+                    Bukkit.getPluginManager().callEvent(preCreatureSpawnEvent);
+                    if (preCreatureSpawnEvent.shouldAbortSpawn()) {
+                        newStacks.clear();
+                        break;
+                    }
+                    if (preCreatureSpawnEvent.isCancelled()) {
+                        iterator.remove();
+                        continue;
+                    }
+                }
 
                 SpawnerSpawnEvent spawnerSpawnEvent = new SpawnerSpawnEvent(entity, stackedSpawner.getSpawner());
                 Bukkit.getPluginManager().callEvent(spawnerSpawnEvent);

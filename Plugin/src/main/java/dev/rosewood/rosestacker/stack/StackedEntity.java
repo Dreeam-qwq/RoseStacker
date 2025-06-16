@@ -1,6 +1,7 @@
 package dev.rosewood.rosestacker.stack;
 
 import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import dev.rosewood.rosegarden.utils.EntitySpawnUtil;
 import dev.rosewood.rosegarden.utils.NMSUtil;
@@ -109,6 +110,7 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
 
         this.entity = entity;
         this.stackedEntityDataStorage.updateEntity(entity);
+        this.resetHasMoved();
         this.updateDisplay();
     }
 
@@ -512,10 +514,14 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
 
         // Call the EntityStackMultipleDeathEvent if enabled
         if (!callEvents) {
-            EntityStackMultipleDeathEvent event = new EntityStackMultipleDeathEvent(this, entityDrops, originalStackSize, entityKillCount);
+            EntityStackMultipleDeathEvent event = new EntityStackMultipleDeathEvent(this, entityDrops, originalStackSize, entityKillCount, multiplier, mainEntity, killer, this::calculateFinalEntityDrops);
             Bukkit.getPluginManager().callEvent(event);
         }
 
+        return this.calculateFinalEntityDrops(entityDrops, multiplier);
+    }
+
+    private EntityDrops calculateFinalEntityDrops(Multimap<LivingEntity, EntityDrops> entityDrops, double multiplier) {
         List<ItemStack> finalItems = new ArrayList<>();
         int finalExp = 0;
         for (EntityDrops drops : entityDrops.values()) {
@@ -804,6 +810,10 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
             this.z = location.getZ();
         }
         return moved;
+    }
+
+    public void resetHasMoved() {
+        this.x = this.y = this.z = 0;
     }
 
 }

@@ -39,29 +39,31 @@ import org.bukkit.inventory.PlayerInventory;
 public class ItemListener implements Listener {
 
     private final RosePlugin rosePlugin;
+    private final StackManager stackManager;
+    private final StackSettingManager stackSettingManager;
 
     public ItemListener(RosePlugin rosePlugin) {
         this.rosePlugin = rosePlugin;
+        this.stackManager = rosePlugin.getManager(StackManager.class);
+        this.stackSettingManager = rosePlugin.getManager(StackSettingManager.class);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onItemDespawn(ItemDespawnEvent event) {
-        StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isAreaDisabled(event.getEntity().getLocation()) || !stackManager.isItemStackingEnabled())
+        if (this.stackManager.isAreaDisabled(event.getEntity().getLocation()) || !this.stackManager.isItemStackingEnabled())
             return;
 
-        StackedItem stackedItem = stackManager.getStackedItem(event.getEntity());
+        StackedItem stackedItem = this.stackManager.getStackedItem(event.getEntity());
         if (stackedItem != null)
-            stackManager.removeItemStack(stackedItem);
+            this.stackManager.removeItemStack(stackedItem);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onItemMerge(ItemMergeEvent event) {
-        StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isAreaDisabled(event.getEntity().getLocation()) || !stackManager.isItemStackingEnabled())
+        if (this.stackManager.isAreaDisabled(event.getEntity().getLocation()) || !this.stackManager.isItemStackingEnabled())
             return;
 
-        ItemStackSettings itemStackSettings = this.rosePlugin.getManager(StackSettingManager.class).getItemStackSettings(event.getEntity());
+        ItemStackSettings itemStackSettings = this.stackSettingManager.getItemStackSettings(event.getEntity());
         if (itemStackSettings != null && !itemStackSettings.isStackingEnabled())
             return;
 
@@ -72,14 +74,13 @@ public class ItemListener implements Listener {
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onItemPickup(EntityPickupItemEvent event) {
         LivingEntity entity = event.getEntity();
-        StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isAreaDisabled(entity.getLocation()))
+        if (this.stackManager.isAreaDisabled(entity.getLocation()))
             return;
 
-        if (!stackManager.isItemStackingEnabled())
+        if (!this.stackManager.isItemStackingEnabled())
             return;
 
-        StackedItem stackedItem = stackManager.getStackedItem(event.getItem());
+        StackedItem stackedItem = this.stackManager.getStackedItem(event.getItem());
         if (stackedItem == null)
             return;
 
@@ -135,15 +136,15 @@ public class ItemListener implements Listener {
         } else {
             // Only pick up one item
             if (stackedItem.getStackSize() > 1) {
-                stackManager.splitItemStack(stackedItem, 1);
+                this.stackManager.splitItemStack(stackedItem, 1);
                 event.setCancelled(true);
             }
 
             if (SettingKey.ENTITY_DONT_STACK_IF_HAS_EQUIPMENT.get()) {
                 this.rosePlugin.getScheduler().runTask(() -> {
-                    StackedEntity stackedEntity = stackManager.getStackedEntity(entity);
+                    StackedEntity stackedEntity = this.stackManager.getStackedEntity(entity);
                     if (stackedEntity != null)
-                        stackManager.tryUnstackEntity(stackedEntity);
+                        this.stackManager.tryUnstackEntity(stackedEntity);
                 });
             }
 
@@ -157,14 +158,13 @@ public class ItemListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onInventoryPickup(InventoryPickupItemEvent event) {
-        StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
-        if (stackManager.isAreaDisabled(event.getItem().getLocation()))
+        if (this.stackManager.isAreaDisabled(event.getItem().getLocation()))
             return;
 
-        if (!stackManager.isItemStackingEnabled())
+        if (!this.stackManager.isItemStackingEnabled())
             return;
 
-        StackedItem stackedItem = stackManager.getStackedItem(event.getItem());
+        StackedItem stackedItem = this.stackManager.getStackedItem(event.getItem());
         if (stackedItem == null)
             return;
 
@@ -200,9 +200,8 @@ public class ItemListener implements Listener {
         int inventorySpace = this.getAmountAvailable(inventory, target);
 
         // Just let them pick it up and remove the item if it will all fit
-        StackManager stackManager = this.rosePlugin.getManager(StackManager.class);
         if (inventorySpace >= stackedItem.getStackSize() && stackedItem.getStackSize() <= maxStackSize) {
-            stackManager.removeItemStack(stackedItem);
+            this.stackManager.removeItemStack(stackedItem);
             return false;
         }
 
@@ -212,7 +211,7 @@ public class ItemListener implements Listener {
         this.addItemStackAmountToInventory(inventory, target, amount);
 
         if (willPickupAll) {
-            stackManager.removeItemStack(stackedItem);
+            this.stackManager.removeItemStack(stackedItem);
         } else {
             stackedItem.setStackSize(stackedItem.getStackSize() - amount);
 

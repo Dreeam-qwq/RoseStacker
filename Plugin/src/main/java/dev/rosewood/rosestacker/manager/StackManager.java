@@ -6,6 +6,7 @@ import dev.rosewood.rosegarden.scheduler.task.ScheduledTask;
 import dev.rosewood.rosestacker.config.SettingKey;
 import dev.rosewood.rosestacker.nms.spawner.SpawnerType;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorageType;
+import dev.rosewood.rosestacker.stack.Stack;
 import dev.rosewood.rosestacker.stack.StackedBlock;
 import dev.rosewood.rosestacker.stack.StackedEntity;
 import dev.rosewood.rosestacker.stack.StackedItem;
@@ -80,7 +81,7 @@ public class StackManager extends Manager implements StackingLogic {
             this.autosaveTask = this.rosePlugin.getScheduler().runTaskTimer(() -> this.saveAllData(false), interval, interval);
         }
 
-        this.disabledWorldNames.addAll(SettingKey.DISABLED_WORLDS.get().stream().map(String::toLowerCase).toList());
+        this.disabledWorldNames.addAll(SettingKey.DISABLED_WORLDS.get());
 
         String multikillAmountValue = SettingKey.ENTITY_MULTIKILL_AMOUNT.get();
         int separatorIndex = multikillAmountValue.indexOf("-");
@@ -399,9 +400,37 @@ public class StackManager extends Manager implements StackingLogic {
     }
 
     @Override
+    public <T extends Stack<?>> void saveChunkEntityStacks(List<T> stacks, boolean clearStored) {
+        if (stacks.isEmpty())
+            return;
+
+        StackingThread stackingThread = this.getStackingThread(stacks.get(0).getWorld());
+        if (stackingThread != null)
+            stackingThread.saveChunkEntityStacks(stacks, clearStored);
+    }
+
+    @Override
     public void saveAllData(boolean clearStored) {
         for (StackingThread stackingThread : this.stackingThreads.values())
             stackingThread.saveAllData(clearStored);
+    }
+
+    @Override
+    public void tryStackEntity(StackedEntity stackedEntity) {
+        StackingThread stackingThread = this.getStackingThread(stackedEntity.getEntity().getWorld());
+        if (stackingThread == null)
+            return;
+
+        stackingThread.tryStackEntity(stackedEntity);
+    }
+
+    @Override
+    public void tryStackItem(StackedItem stackedItem) {
+        StackingThread stackingThread = this.getStackingThread(stackedItem.getItem().getWorld());
+        if (stackingThread == null)
+            return;
+
+        stackingThread.tryStackItem(stackedItem);
     }
 
     @Override
@@ -516,7 +545,7 @@ public class StackManager extends Manager implements StackingLogic {
     public boolean isWorldDisabled(World world) {
         if (world == null)
             return true;
-        return this.disabledWorldNames.contains(world.getName().toLowerCase());
+        return this.disabledWorldNames.contains(world.getName());
     }
 
     /**
