@@ -38,11 +38,8 @@ public class NBTStackedEntityDataStorage extends StackedEntityDataStorage {
 
     public NBTStackedEntityDataStorage(LivingEntity livingEntity) {
         super(StackedEntityDataStorageType.NBT, livingEntity);
-        TagValueOutput valueOutput = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, ((CraftLivingEntity) livingEntity).getHandle().registryAccess());
-        ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(livingEntity, valueOutput);
 
-        this.base = valueOutput.buildResult();
-
+        this.base = ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(livingEntity);
         this.stripUnneeded(this.base);
         this.stripAttributeUuids(this.base);
 
@@ -76,11 +73,7 @@ public class NBTStackedEntityDataStorage extends StackedEntityDataStorage {
 
     @Override
     public void add(LivingEntity entity) {
-        TagValueOutput valueOutput = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, ((CraftLivingEntity) entity).getHandle().registryAccess());
-        ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(entity, valueOutput);
-
-        CompoundTag compoundTag = valueOutput.buildResult();
-
+        CompoundTag compoundTag = ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(entity);
         this.stripUnneeded(compoundTag);
         this.stripAttributeUuids(compoundTag);
         this.removeDuplicates(compoundTag);
@@ -200,9 +193,7 @@ public class NBTStackedEntityDataStorage extends StackedEntityDataStorage {
                 CompoundTag compoundTag = dataIterator.next();
                 LivingEntity entity = new NBTEntityDataEntry(this.rebuild(compoundTag)).createEntity(thisEntity.getLocation(), false, thisEntity.getType());
                 if (function.apply(entity)) {
-                    TagValueOutput valueOutput = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, ((CraftLivingEntity) entity).getHandle().registryAccess());
-                    ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(entity, valueOutput);
-                    CompoundTag replacementTag = valueOutput.buildResult();
+                    CompoundTag replacementTag = ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(entity);
                     this.stripUnneeded(replacementTag);
                     this.stripAttributeUuids(replacementTag);
                     this.removeDuplicates(replacementTag);
@@ -232,9 +223,7 @@ public class NBTStackedEntityDataStorage extends StackedEntityDataStorage {
                     removedEntries.add(entity);
                     dataIterator.remove();
                 } else {
-                    TagValueOutput valueOutput = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, ((CraftLivingEntity) entity).getHandle().registryAccess());
-                    ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(entity, valueOutput);
-                    CompoundTag replacementTag = valueOutput.buildResult();
+                    CompoundTag replacementTag = ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(entity);
                     this.stripUnneeded(replacementTag);
                     this.stripAttributeUuids(replacementTag);
                     this.removeDuplicates(replacementTag);

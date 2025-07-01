@@ -3,6 +3,7 @@ package dev.rosewood.rosestacker.nms.v1_21_R5;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import dev.rosewood.rosegarden.utils.NMSUtil;
+import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.nms.NMSHandler;
 import dev.rosewood.rosestacker.nms.hologram.Hologram;
 import dev.rosewood.rosestacker.nms.spawner.StackedSpawnerTile;
@@ -559,29 +560,42 @@ public class NMSHandlerImpl implements NMSHandler {
         };
     }
 
-    public void saveEntityToTag(LivingEntity livingEntity, TagValueOutput output) {
+    public CompoundTag saveEntityToTag(LivingEntity livingEntity) {
+        Entity nmsEntity = ((CraftEntity) livingEntity).getHandle();
         // Async villager "fix", if the trades aren't loaded yet force them to save as empty, they will get loaded later
         if (livingEntity instanceof AbstractVillager) {
             try {
-                net.minecraft.world.entity.npc.AbstractVillager villager = ((CraftAbstractVillager) livingEntity).getHandle();
+                net.minecraft.world.entity.npc.AbstractVillager villager = (net.minecraft.world.entity.npc.AbstractVillager) nmsEntity;
 
                 // Set the trades to empty if they are null to prevent trades from generating during the saveWithoutId call
                 boolean bypassTrades = field_AbstractVillager_offers.get(villager) == null;
                 if (bypassTrades)
                     field_AbstractVillager_offers.set(villager, new MerchantOffers());
 
-                ((CraftLivingEntity) livingEntity).getHandle().saveWithoutId(output);
+                ProblemReporter.Collector reporter = new ProblemReporter.Collector();
+                TagValueOutput valueOutput = TagValueOutput.createWithContext(reporter, villager.registryAccess());
+                ((CraftLivingEntity) livingEntity).getHandle().saveWithoutId(valueOutput);
+                if (!reporter.isEmpty())
+                    RoseStacker.getInstance().getLogger().severe(reporter.getTreeReport());
+                CompoundTag compoundTag = valueOutput.buildResult();
 
                 // Restore the offers back to null and make sure nothing is written to the NBT
                 if (bypassTrades) {
                     field_AbstractVillager_offers.set(villager, null);
-                    output.discard("Offers");
+                    compoundTag.remove("Offers");
                 }
+                return compoundTag;
             } catch (ReflectiveOperationException e) {
                 e.printStackTrace();
+                return new CompoundTag();
             }
         } else {
-            ((CraftLivingEntity) livingEntity).getHandle().saveWithoutId(output);
+            ProblemReporter.Collector reporter = new ProblemReporter.Collector();
+            TagValueOutput valueOutput = TagValueOutput.createWithContext(reporter, nmsEntity.registryAccess());
+            if (!reporter.isEmpty())
+                RoseStacker.getInstance().getLogger().severe(reporter.getTreeReport());
+            ((CraftLivingEntity) livingEntity).getHandle().saveWithoutId(valueOutput);
+            return valueOutput.buildResult();
         }
     }
 

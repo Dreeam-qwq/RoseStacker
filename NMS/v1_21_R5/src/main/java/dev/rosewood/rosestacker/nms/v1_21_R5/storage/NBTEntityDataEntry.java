@@ -1,5 +1,6 @@
 package dev.rosewood.rosestacker.nms.v1_21_R5.storage;
 
+import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.nms.NMSAdapter;
 import dev.rosewood.rosestacker.nms.storage.EntityDataEntry;
 import dev.rosewood.rosestacker.nms.v1_21_R5.NMSHandlerImpl;
@@ -17,11 +18,9 @@ import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.storage.TagValueInput;
-import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_21_R5.CraftWorld;
-import org.bukkit.craftbukkit.v1_21_R5.entity.CraftLivingEntity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 
@@ -30,10 +29,7 @@ public class NBTEntityDataEntry implements EntityDataEntry {
     private final CompoundTag compoundTag;
 
     public NBTEntityDataEntry(LivingEntity livingEntity) {
-        TagValueOutput valueOutput = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, ((CraftLivingEntity) livingEntity).getHandle().registryAccess());
-        ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(livingEntity, valueOutput);
-
-        this.compoundTag = valueOutput.buildResult();
+        this.compoundTag = ((NMSHandlerImpl) NMSAdapter.getHandler()).saveEntityToTag(livingEntity);
     }
 
     public NBTEntityDataEntry(CompoundTag compoundTag) {
@@ -76,8 +72,11 @@ public class NBTEntityDataEntry implements EntityDataEntry {
                     throw new NullPointerException("Unable to create entity from NBT");
 
                 // Load NBT
-                ValueInput valueInput = TagValueInput.create(ProblemReporter.DISCARDING, entity.registryAccess(), nbt);
+                ProblemReporter.Collector reporter = new ProblemReporter.Collector();
+                ValueInput valueInput = TagValueInput.create(reporter, entity.registryAccess(), nbt);
                 entity.load(valueInput);
+                if (!reporter.isEmpty())
+                    RoseStacker.getInstance().getLogger().severe(reporter.getTreeReport());
 
                 if (addToWorld) {
                     nmsHandler.addEntityToWorld(world, entity);

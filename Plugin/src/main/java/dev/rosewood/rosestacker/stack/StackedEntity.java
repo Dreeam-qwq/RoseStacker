@@ -63,6 +63,7 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
     private LivingEntity entity;
     private StackedEntityDataStorage stackedEntityDataStorage;
     private int npcCheckCounter;
+    private boolean npc;
 
     private String displayName;
     private boolean displayNameVisible;

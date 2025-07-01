@@ -172,14 +172,19 @@ public class StackingThread implements StackingLogic, AutoCloseable {
                     this.splitEntityStack(stackedEntity);
             });
         } else if (SettingKey.ENTITY_MIN_SPLIT_IF_LOWER.get() && stackedEntity.getStackSize() < stackedEntity.getStackSettings().getMinStackSize()) {
-            NMSHandler nmsHandler = NMSAdapter.getHandler();
-            StackedEntityDataStorage nbt = stackedEntity.getDataStorage();
-            stackedEntity.setDataStorage(nmsHandler.createEntityDataStorage(entity, this.stackManager.getEntityDataStorageType(entity.getType())));
-            ThreadUtils.runSync(() -> {
-                for (EntityDataEntry entityDataEntry : nbt.getAll())
-                    entityDataEntry.createEntity(stackedEntity.getLocation(), true, entity.getType());
-            });
+            this.splitEntireStack(stackedEntity);
         }
+    }
+
+    private void splitEntireStack(StackedEntity stackedEntity) {
+        LivingEntity entity = stackedEntity.getEntity();
+        NMSHandler nmsHandler = NMSAdapter.getHandler();
+        StackedEntityDataStorage nbt = stackedEntity.getDataStorage();
+        stackedEntity.setDataStorage(nmsHandler.createEntityDataStorage(entity, this.stackManager.getEntityDataStorageType(entity.getType())));
+        ThreadUtils.runSync(() -> {
+            for (EntityDataEntry entityDataEntry : nbt.getAll())
+                entityDataEntry.createEntity(stackedEntity.getLocation(), true, entity.getType());
+        });
     }
 
     private void cleanupOrphanedEntities() {
@@ -983,10 +988,8 @@ public class StackingThread implements StackingLogic, AutoCloseable {
         if (stackSettings == null)
             return;
 
-        if (stackedEntity.checkNPC()) {
-            this.removeEntityStack(stackedEntity);
+        if (stackedEntity.checkNPC())
             return;
-        }
 
         LivingEntity entity = stackedEntity.getEntity();
         if (this.isRemoved(entity) || !stackedEntity.hasMoved())
