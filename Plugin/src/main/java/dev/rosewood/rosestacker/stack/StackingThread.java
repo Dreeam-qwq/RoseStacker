@@ -569,7 +569,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
     }
 
     private boolean canEntityInstantStack() {
-        return SettingKey.ENTITY_INSTANT_STACK.get() && (!NPCsHook.mythicMobsEnabled() || SettingKey.MISC_MYTHICMOBS_ALLOW_STACKING.get());
+        return SettingKey.ENTITY_INSTANT_STACK.get();
     }
 
     @Override
