@@ -559,13 +559,17 @@ public class StackingThread implements StackingLogic, AutoCloseable {
         StackedEntity newStackedEntity = new StackedEntity(livingEntity);
         this.stackedEntities.put(livingEntity.getUniqueId(), newStackedEntity);
 
-        if (tryStack && SettingKey.ENTITY_INSTANT_STACK.get()) {
+        if (tryStack && this.canEntityInstantStack()) {
             livingEntity.setMetadata(NEW_METADATA, new FixedMetadataValue(this.rosePlugin, true));
             this.tryStackEntity(newStackedEntity);
             livingEntity.removeMetadata(NEW_METADATA, this.rosePlugin);
         }
 
         return newStackedEntity;
+    }
+
+    private boolean canEntityInstantStack() {
+        return SettingKey.ENTITY_INSTANT_STACK.get() && (!NPCsHook.mythicMobsEnabled() || SettingKey.MISC_MYTHICMOBS_ALLOW_STACKING.get());
     }
 
     @Override
@@ -627,7 +631,7 @@ public class StackingThread implements StackingLogic, AutoCloseable {
 
         this.stackedEntities.put(stackedEntity.getEntity().getUniqueId(), stackedEntity);
 
-        if (SettingKey.ENTITY_INSTANT_STACK.get())
+        if (this.canEntityInstantStack())
             this.tryStackEntity(stackedEntity);
     }
 

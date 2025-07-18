@@ -1,7 +1,6 @@
 package dev.rosewood.rosestacker.utils;
 
 import dev.rosewood.rosegarden.RosePlugin;
-import dev.rosewood.rosegarden.utils.NMSUtil;
 import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.config.SettingKey;
 import dev.rosewood.rosestacker.manager.StackSettingManager;
@@ -17,16 +16,15 @@ import org.bukkit.entity.Hoglin;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.PiglinAbstract;
-import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
-import org.jetbrains.annotations.ApiStatus;
 
 public final class PersistentDataUtils {
 
     private static final String UNSTACKABLE_METADATA_NAME = "unstackable";
     private static final String NO_AI_METADATA_NAME = "no_ai";
     private static final String SPAWNED_FROM_SPAWNER_METADATA_NAME = "spawner_spawned";
+    private static final String SPAWNED_FROM_TRIAL_SPAWNER_METADATA_NAME = "trial_spawner_spawned";
     private static final String TOTAL_SPAWNS_METADATA_NAME = "total_spawns";
 
     public static void setUnstackable(Entity entity, boolean unstackable) {
@@ -74,7 +72,7 @@ public final class PersistentDataUtils {
             }
 
             if (SettingKey.SPAWNER_DISABLE_MOB_AI_OPTIONS_DISABLE_ITEM_PICKUP.get())
-                entity.setCanPickupItems(false);
+                entity.setCanPickupItems(!disable);
 
             if (SettingKey.SPAWNER_DISABLE_MOB_AI_OPTIONS_SET_UNAWARE.get() && entity instanceof Mob mob)
                 mob.setAware(!disable);
@@ -97,7 +95,7 @@ public final class PersistentDataUtils {
             }
 
             if (SettingKey.SPAWNER_DISABLE_MOB_AI_OPTIONS_DISABLE_COLLISION.get())
-                entity.setCollidable(false);
+                entity.setCollidable(!disable);
         }
     }
 
@@ -125,6 +123,23 @@ public final class PersistentDataUtils {
         RosePlugin rosePlugin = RoseStacker.getInstance();
         return entity.getPersistentDataContainer().has(new NamespacedKey(rosePlugin, SPAWNED_FROM_SPAWNER_METADATA_NAME), PersistentDataType.INTEGER)
                 || EntityUtils.hasSpawnerSpawnReason(entity);
+    }
+
+    public static void tagSpawnedFromTrialSpawner(Entity entity) {
+        RosePlugin rosePlugin = RoseStacker.getInstance();
+        entity.getPersistentDataContainer().set(new NamespacedKey(rosePlugin, SPAWNED_FROM_TRIAL_SPAWNER_METADATA_NAME), PersistentDataType.INTEGER, 1);
+    }
+
+    /**
+     * Checks if an entity was spawned from a trial spawner
+     *
+     * @param entity The entity to check
+     * @return true if the entity was spawned from a trial spawner, otherwise false
+     */
+    public static boolean isSpawnedFromTrialSpawner(Entity entity) {
+        RosePlugin rosePlugin = RoseStacker.getInstance();
+        return entity.getPersistentDataContainer().has(new NamespacedKey(rosePlugin, SPAWNED_FROM_TRIAL_SPAWNER_METADATA_NAME), PersistentDataType.INTEGER)
+                || EntityUtils.hasTrialSpawnerSpawnReason(entity);
     }
 
     public static void increaseSpawnCount(StackedSpawnerTile spawner, long amount) {
