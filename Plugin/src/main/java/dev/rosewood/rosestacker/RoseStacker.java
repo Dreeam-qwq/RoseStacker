@@ -55,8 +55,6 @@ public class RoseStacker extends RosePlugin {
             Bukkit.getPluginManager().disablePlugin(this);
             return;
         }
-
-        WorldGuardHook.registerFlag();
     }
 
     @Override
