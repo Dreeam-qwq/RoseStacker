@@ -208,8 +208,19 @@ public class StackedBlockGui {
         if (newStackSize == this.stackedBlock.getStackSize())
             return;
 
-        int difference = newStackSize - this.stackedBlock.getStackSize();
-        if (newStackSize > this.stackedBlock.getStackSize()) {
+        int maxStackSize = this.stackedBlock.getStackSettings().getMaxStackSize();
+        if (newStackSize > maxStackSize) {
+            List<ItemStack> overflowItems = GuiUtil.getMaterialAmountAsItemStacks(this.stackType, newStackSize - maxStackSize);
+            ItemUtils.dropItemsToPlayer(player, overflowItems);
+            newStackSize = maxStackSize;
+        }
+
+        int stackSize = this.stackedBlock.getStackSize();
+        int difference = newStackSize - stackSize;
+        if (difference == 0)
+            return;
+
+        if (newStackSize > stackSize) {
             BlockStackEvent blockStackEvent = new BlockStackEvent(player, this.stackedBlock, difference, false);
             Bukkit.getPluginManager().callEvent(blockStackEvent);
             if (blockStackEvent.isCancelled()) {
@@ -217,7 +228,7 @@ public class StackedBlockGui {
                 return;
             }
 
-            newStackSize = this.stackedBlock.getStackSize() + blockStackEvent.getIncreaseAmount();
+            newStackSize = stackSize + blockStackEvent.getIncreaseAmount();
         } else {
             BlockUnstackEvent blockUnstackEvent = new BlockUnstackEvent(player, this.stackedBlock, -difference);
             Bukkit.getPluginManager().callEvent(blockUnstackEvent);
@@ -226,21 +237,21 @@ public class StackedBlockGui {
                 return;
             }
 
-            newStackSize = this.stackedBlock.getStackSize() - blockUnstackEvent.getDecreaseAmount();
+            newStackSize = stackSize - blockUnstackEvent.getDecreaseAmount();
         }
+
+        if (newStackSize > maxStackSize)
+            newStackSize = maxStackSize;
+        if (newStackSize < 0)
+            newStackSize = 0;
 
         this.stackedBlock.setStackSize(newStackSize);
 
-        int maxStackSize = this.stackedBlock.getStackSettings().getMaxStackSize();
         if (newStackSize == 1) {
             stackManager.removeBlockStack(this.stackedBlock);
         } else if (newStackSize == 0) {
             stackManager.removeBlockStack(this.stackedBlock);
             this.stackedBlock.getBlock().setType(Material.AIR);
-        } else if (newStackSize > maxStackSize) {
-            List<ItemStack> overflowItems = GuiUtil.getMaterialAmountAsItemStacks(this.stackType, newStackSize - maxStackSize);
-            ItemUtils.dropItemsToPlayer(player, overflowItems);
-            this.stackedBlock.setStackSize(maxStackSize);
         }
     }
 

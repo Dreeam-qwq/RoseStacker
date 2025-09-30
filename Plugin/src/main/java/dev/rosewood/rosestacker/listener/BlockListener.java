@@ -81,17 +81,20 @@ public class BlockListener implements Listener {
 
         // Check for interacting with certain stacked blocks
         ItemStack item = event.getItem();
-        if (this.stackManager.isBlockStackingEnabled() && this.stackManager.isBlockStacked(block) && event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            if (block.getType() == Material.DRAGON_EGG && !event.getPlayer().isSneaking()) {
+        if (this.stackManager.isBlockStackingEnabled() && this.stackManager.isBlockStacked(block)) {
+            if (block.getType() == Material.DRAGON_EGG) {
                 event.setUseInteractedBlock(Event.Result.DENY);
                 event.setUseItemInHand(Event.Result.ALLOW);
-                return;
-            } else if (item != null && block.getType() == Material.TNT && (item.getType() == Material.FLINT_AND_STEEL || item.getType() == Material.FIRE_CHARGE)) {
-                event.setUseInteractedBlock(Event.Result.DENY);
-                return;
-            } else if (StackerUtils.isInteractable(block.getType()) && (!event.getPlayer().isSneaking() || item == null)) {
-                event.setUseInteractedBlock(Event.Result.DENY);
-                return;
+            }
+
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                if (item != null && block.getType() == Material.TNT && (item.getType() == Material.FLINT_AND_STEEL || item.getType() == Material.FIRE_CHARGE)) {
+                    event.setUseInteractedBlock(Event.Result.DENY);
+                    return;
+                } else if (StackerUtils.isInteractable(block.getType()) && (!event.getPlayer().isSneaking() || item == null)) {
+                    event.setUseInteractedBlock(Event.Result.DENY);
+                    return;
+                }
             }
         }
 
@@ -235,7 +238,7 @@ public class BlockListener implements Listener {
         if (player.getGameMode() == GameMode.CREATIVE || !itemStack.getType().name().endsWith("PICKAXE"))
             return;
 
-        ItemUtils.damageTool(itemStack);
+        ItemUtils.damageTool(player);
     }
 
     /**
@@ -280,7 +283,17 @@ public class BlockListener implements Listener {
             if (destroyFromMissingPermission)
                 destroyAmount = amount;
 
-            if (!(SettingKey.SPAWNER_SILK_TOUCH_ONLY_NATURAL.get() && placedByPlayer)
+            boolean rollSilkTouch = true;
+            if (SettingKey.SPAWNER_SILK_TOUCH_ONLY_PLAYER_PLACED.get()) {
+                if (!placedByPlayer) {
+                    destroyAmount += amount;
+                    rollSilkTouch = false;
+                }
+            } else if (SettingKey.SPAWNER_SILK_TOUCH_ONLY_NATURAL.get() && placedByPlayer) {
+                rollSilkTouch = false;
+            }
+
+            if (rollSilkTouch
                     && (!SettingKey.SPAWNER_ADVANCED_PERMISSIONS.get() || !hasAdvNoSilkPermission)
                     && (!SettingKey.SPAWNER_SILK_TOUCH_GUARANTEE.get() || silkTouchLevel < 2)) {
                 if (silkTouchLevel > 0) {
@@ -372,68 +385,71 @@ public class BlockListener implements Listener {
         boolean stackedBlockProtection = SettingKey.BLOCK_EXPLOSION_PROTECTION.get() && this.stackManager.isBlockStackingEnabled();
         boolean stackedSpawnerProtection = SettingKey.SPAWNER_EXPLOSION_PROTECTION.get() && this.stackManager.isSpawnerStackingEnabled();
 
-        if (stackedSpawnerProtection)
-            blockList.removeIf(this.stackManager::isSpawnerStacked);
-
-        if (stackedBlockProtection)
-            blockList.removeIf(this.stackManager::isBlockStacked);
-
         for (Block block : new ArrayList<>(blockList)) {
             StackedBlock stackedBlock = this.stackManager.getStackedBlock(block);
             StackedSpawner stackedSpawner = this.stackManager.getStackedSpawner(block);
             if (stackedBlock != null) {
                 blockList.remove(block);
 
+                if (stackedBlockProtection)
+                    continue;
+
                 if (!StackerUtils.passesChance(SettingKey.BLOCK_EXPLOSION_DESTROY_CHANCE.get() / 100))
                     continue;
 
                 stackedBlock.kickOutGuiViewers();
 
+                int stackSize = stackedBlock.getStackSize();
                 int destroyAmountFixed = SettingKey.BLOCK_EXPLOSION_DESTROY_AMOUNT_FIXED.get();
                 int destroyAmount;
-                if (destroyAmountFixed != -1) {
+                if (destroyAmountFixed > 0) {
                     destroyAmount = destroyAmountFixed;
                 } else {
-                    destroyAmount = stackedBlock.getStackSize() - (int) Math.ceil(stackedBlock.getStackSize() * (SettingKey.BLOCK_EXPLOSION_DESTROY_AMOUNT_PERCENTAGE.get() / 100));
+                    destroyAmount = (int) Math.ceil(stackSize * (SettingKey.BLOCK_EXPLOSION_DESTROY_AMOUNT_PERCENTAGE.get() / 100));
                 }
 
                 BlockUnstackEvent blockUnstackEvent = new BlockUnstackEvent(null, stackedBlock, destroyAmount);
                 Bukkit.getPluginManager().callEvent(blockUnstackEvent);
-                if (blockUnstackEvent.isCancelled())
-                    continue;
                 destroyAmount = blockUnstackEvent.getDecreaseAmount();
-
-                int newStackSize = stackedBlock.getStackSize() - destroyAmount;
-                if (newStackSize <= 0) {
-                    block.setType(Material.AIR);
-                    stackedBlock.setStackSize(0);
-                    this.stackManager.removeBlockStack(stackedBlock);
+                if (blockUnstackEvent.isCancelled() || destroyAmount <= 0)
                     continue;
-                }
 
-                if (SettingKey.BLOCK_EXPLOSION_DECREASE_STACK_SIZE_ONLY.get()) {
-                    stackedBlock.setStackSize(newStackSize);
-                    if (newStackSize <= 1)
-                        this.stackManager.removeBlockStack(stackedBlock);
-                } else {
+                if (destroyAmount > stackSize)
+                    destroyAmount = stackSize;
+
+                Material type = block.getType();
+                boolean dropItems = !SettingKey.BLOCK_EXPLOSION_DECREASE_STACK_SIZE_ONLY.get();
+                int newStackSize = stackSize - destroyAmount;
+                if (newStackSize == 0 || (dropItems && SettingKey.BLOCK_EXPLOSION_DESTROY_REMAINING.get())) {
+                    block.setType(Material.AIR);
                     stackedBlock.setStackSize(0);
                     this.stackManager.removeBlockStack(stackedBlock);
-                    Material type = block.getType();
-                    block.setType(Material.AIR);
-                    ThreadUtils.runSync(() -> {
-                        List<ItemStack> items;
-                        if (SettingKey.BLOCK_BREAK_ENTIRE_STACK_INTO_SEPARATE.get()) {
-                            items = GuiUtil.getMaterialAmountAsItemStacks(type, newStackSize);
-                        } else {
-                            items = List.of(ItemUtils.getBlockAsStackedItemStack(type, newStackSize));
-                        }
-                        this.stackManager.preStackItems(items, block.getLocation().clone().add(0.5, 0.5, 0.5));
-                    });
+                } else {
+                    stackedBlock.setStackSize(newStackSize);
+                    if (newStackSize == 1)
+                        this.stackManager.removeBlockStack(stackedBlock);
                 }
+
+                if (!dropItems)
+                    continue;
+
+                int finalDestroyAmount = destroyAmount;
+                ThreadUtils.runSync(() -> { // Delay a tick so the items aren't destroyed by the explosion
+                    Location dropLocation = StackerUtils.adjustBlockLocation(block.getLocation());
+                    if (SettingKey.BLOCK_BREAK_ENTIRE_STACK_INTO_SEPARATE.get()) {
+                        ItemStack blockItem = new ItemStack(type, 1);
+                        this.stackManager.dropItemStack(blockItem, finalDestroyAmount, dropLocation, true);
+                    } else {
+                        this.stackManager.preStackItems(List.of(ItemUtils.getBlockAsStackedItemStack(type, finalDestroyAmount)), dropLocation);
+                    }
+                });
             } else if (stackedSpawner != null) {
                 blockList.remove(block);
 
-                if (!stackedSpawner.isPlacedByPlayer() || SettingKey.SPAWNER_EXPLOSION_DESTROY_NATURAL.get()) {
+                if (stackedSpawnerProtection)
+                    continue;
+
+                if (!stackedSpawner.isPlacedByPlayer() && SettingKey.SPAWNER_EXPLOSION_DESTROY_NATURAL.get()) {
                     block.setType(Material.AIR);
                     stackedSpawner.setStackSize(0);
                     this.stackManager.removeSpawnerStack(stackedSpawner);
@@ -443,44 +459,48 @@ public class BlockListener implements Listener {
                 if (!StackerUtils.passesChance(SettingKey.SPAWNER_EXPLOSION_DESTROY_CHANCE.get() / 100))
                     continue;
 
+                int stackSize = stackedSpawner.getStackSize();
                 int destroyAmountFixed = SettingKey.SPAWNER_EXPLOSION_DESTROY_AMOUNT_FIXED.get();
                 int destroyAmount;
-                if (destroyAmountFixed != -1) {
+                if (destroyAmountFixed > 0) {
                     destroyAmount = destroyAmountFixed;
                 } else {
-                    destroyAmount = stackedSpawner.getStackSize() - (int) Math.ceil(stackedSpawner.getStackSize() * (SettingKey.SPAWNER_EXPLOSION_DESTROY_AMOUNT_PERCENTAGE.get() / 100));
+                    destroyAmount = (int) Math.ceil(stackSize * (SettingKey.SPAWNER_EXPLOSION_DESTROY_AMOUNT_PERCENTAGE.get() / 100));
                 }
 
                 SpawnerUnstackEvent spawnerUnstackEvent = new SpawnerUnstackEvent(null, stackedSpawner, destroyAmount);
                 Bukkit.getPluginManager().callEvent(spawnerUnstackEvent);
-                if (spawnerUnstackEvent.isCancelled())
-                    continue;
                 destroyAmount = spawnerUnstackEvent.getDecreaseAmount();
-
-                int newStackSize = stackedSpawner.getStackSize() - destroyAmount;
-                if (newStackSize <= 0) {
-                    block.setType(Material.AIR);
-                    stackedSpawner.setStackSize(0);
-                    this.stackManager.removeSpawnerStack(stackedSpawner);
+                if (spawnerUnstackEvent.isCancelled() || destroyAmount <= 0)
                     continue;
-                }
 
-                if (SettingKey.SPAWNER_EXPLOSION_DECREASE_STACK_SIZE_ONLY.get()) {
-                    stackedSpawner.setStackSize(newStackSize);
-                } else {
+                if (destroyAmount > stackSize)
+                    destroyAmount = stackSize;
+
+                SpawnerType spawnerType = stackedSpawner.getSpawnerTile().getSpawnerType();
+                boolean dropItems = !SettingKey.SPAWNER_EXPLOSION_DECREASE_STACK_SIZE_ONLY.get();
+                int newStackSize = stackSize - destroyAmount;
+                if (newStackSize == 0 || (dropItems && SettingKey.SPAWNER_EXPLOSION_DESTROY_REMAINING.get())) {
+                    block.setType(Material.AIR);
                     stackedSpawner.setStackSize(0);
                     this.stackManager.removeSpawnerStack(stackedSpawner);
-                    SpawnerType spawnerType = stackedSpawner.getSpawnerTile().getSpawnerType();
-                    block.setType(Material.AIR);
-                    ThreadUtils.runSync(() -> {
-                        if (SettingKey.SPAWNER_BREAK_ENTIRE_STACK_INTO_SEPARATE.get()) {
-                            ItemStack spawnerItem = ItemUtils.getSpawnerAsStackedItemStack(spawnerType, 1);
-                            this.stackManager.dropItemStack(spawnerItem, newStackSize, block.getLocation(), true);
-                        } else {
-                            this.stackManager.preStackItems(List.of(ItemUtils.getSpawnerAsStackedItemStack(spawnerType, newStackSize)), block.getLocation());
-                        }
-                    });
+                } else {
+                    stackedSpawner.setStackSize(newStackSize);
                 }
+
+                if (!dropItems)
+                    continue;
+
+                int finalDestroyAmount = destroyAmount;
+                ThreadUtils.runSync(() -> { // Delay a tick so the items aren't destroyed by the explosion
+                    Location dropLocation = StackerUtils.adjustBlockLocation(block.getLocation());
+                    if (SettingKey.SPAWNER_BREAK_ENTIRE_STACK_INTO_SEPARATE.get()) {
+                        ItemStack spawnerItem = ItemUtils.getSpawnerAsStackedItemStack(spawnerType, 1);
+                        this.stackManager.dropItemStack(spawnerItem, finalDestroyAmount, dropLocation, true);
+                    } else {
+                        this.stackManager.preStackItems(List.of(ItemUtils.getSpawnerAsStackedItemStack(spawnerType, finalDestroyAmount)), dropLocation);
+                    }
+                });
             }
         }
     }

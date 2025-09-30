@@ -298,7 +298,8 @@ public class EntityStackSettings extends StackSettings {
             Mob stackedMob = (Mob) stacked;
             Mob unstackedMob = (Mob) unstacked;
 
-            stackedMob.setTarget(unstackedMob.getTarget());
+            if (SettingKey.ENTITY_KILL_TRANSFER_TARGET.get())
+                stackedMob.setTarget(unstackedMob.getTarget());
         }
 
         if (this.isEntity(Animals.class) && SettingKey.ENTITY_CUMULATIVE_BREEDING.get()) {
@@ -338,6 +339,7 @@ public class EntityStackSettings extends StackSettings {
             EntityEquipment equipment = entity.getEquipment();
             if (equipment != null)
                 equipment.clear();
+            entity.setCanPickupItems(false);
         }
 
         if (this.isEntity(Ageable.class))

@@ -1,6 +1,7 @@
 package dev.rosewood.rosestacker.utils;
 
 import dev.rosewood.rosegarden.utils.EntitySpawnUtil;
+import dev.rosewood.rosegarden.utils.NMSUtil;
 import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.config.SettingKey;
 import dev.rosewood.rosestacker.manager.LocaleManager;
@@ -33,14 +34,14 @@ public final class StackerUtils {
 
     public static final String MIN_SUPPORTED_VERSION = "1.16.5";
     public static final String MAX_SUPPORTED_VERSION = "1.21.8";
-    public static final String MAX_SUPPORTED_LOCALE_VERSION = "1.21.7";
+    public static final String MAX_SUPPORTED_LOCALE_VERSION = "1.21.8";
 
     public static final int ASSUMED_ENTITY_VISIBILITY_RANGE = 75 * 75;
 
     public static final DustOptions STACKABLE_DUST_OPTIONS = new DustOptions(Color.fromRGB(0x00FF00), 1.5F);
     public static final DustOptions UNSTACKABLE_DUST_OPTIONS = new DustOptions(Color.fromRGB(0xFF0000), 1.5F);
 
-    private static final Random RANDOM = new Random();
+    public static final Random RANDOM = new Random();
     private static Set<EntityType> cachedStackableEntityTypes;
 
     private static NumberFormat formatter = NumberFormat.getInstance();
@@ -288,6 +289,14 @@ public final class StackerUtils {
 
     public static boolean isVanished(Player player) {
         return player.getMetadata("vanished").stream().anyMatch(MetadataValue::asBoolean);
+    }
+
+    public static Location adjustBlockLocation(Location location) {
+        if (NMSUtil.getVersionNumber() > 21 || (NMSUtil.getVersionNumber() == 21 && NMSUtil.getMinorVersionNumber() >= 3)) {
+            return location.add(0.5, 0.5, 0.5);
+        } else {
+            return location;
+        }
     }
 
 }
