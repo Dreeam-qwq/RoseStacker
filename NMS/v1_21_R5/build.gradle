@@ -1,18 +1,18 @@
 plugins {
-    id 'dev.rosewood.mojang-remapper' version '1.1.0'
+    id 'dev.rosewood.mojang-remapper' version '1.2.0'
 }
 
 dependencies {
     compileOnly project(':NMS:Wrapper')
     compileOnly project(':Plugin')
-    compileOnly 'org.spigotmc:spigot-api:1.21.7-R0.1-SNAPSHOT'
-    compileOnly 'org.spigotmc:spigot:1.21.7:remapped-mojang'
+    compileOnly 'org.spigotmc:spigot-api:1.21.8-R0.1-SNAPSHOT'
+    compileOnly 'org.spigotmc:spigot:1.21.8:remapped-mojang'
     compileOnly 'com.github.Mojang:DataFixerUpper:e843dac1eb'
 
-    mojangToObf 'org.spigotmc:minecraft-server:1.21.7:maps-mojang@txt'
-    mojangRemapped 'org.spigotmc:spigot:1.21.7:remapped-mojang'
-    obfToRuntime 'org.spigotmc:minecraft-server:1.21.7:maps-spigot@csrg'
-    obfRemapped 'org.spigotmc:spigot:1.21.7:remapped-obf'
+    mojangToObf 'org.spigotmc:minecraft-server:1.21.8:maps-mojang@txt'
+    mojangRemapped 'org.spigotmc:spigot:1.21.8:remapped-mojang'
+    obfToRuntime 'org.spigotmc:minecraft-server:1.21.8:maps-spigot@csrg'
+    obfRemapped 'org.spigotmc:spigot:1.21.8:remapped-obf'
 }
 
 configurations {
