@@ -21,7 +21,9 @@ import org.bukkit.block.Container;
 import org.bukkit.entity.Allay;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Piglin;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
@@ -82,8 +84,10 @@ public class ItemListener implements Listener {
         if (!this.stackManager.isItemStackingEnabled())
             return;
 
-        StackedItem stackedItem = this.stackManager.getStackedItem(event.getItem());
-        if (stackedItem == null)
+        Item item = event.getItem();
+        Material itemType = item.getItemStack().getType();
+        StackedItem stackedItem = this.stackManager.getStackedItem(item);
+        if (stackedItem == null || stackedItem.getStackSize() == 1)
             return;
 
         // Fire the event to allow other plugins to manipulate the items before we pick up items from stacked item
@@ -135,12 +139,13 @@ public class ItemListener implements Listener {
                 event.setCancelled(true);
             }
             return;
+        } else if (entity instanceof Piglin) {
+            this.stackManager.splitItemStack(stackedItem, 1);
+            return;
         } else {
             // Only pick up one item
-            if (stackedItem.getStackSize() > 1) {
-                this.stackManager.splitItemStack(stackedItem, 1);
-                event.setCancelled(true);
-            }
+            this.stackManager.splitItemStack(stackedItem, 1);
+            event.setCancelled(true);
 
             if (SettingKey.ENTITY_DONT_STACK_IF_HAS_EQUIPMENT.get()) {
                 this.rosePlugin.getScheduler().runTask(() -> {
@@ -189,7 +194,7 @@ public class ItemListener implements Listener {
     @EventHandler(priority = EventPriority.LOW)
     public void onAnvilRenameSpawner(PrepareAnvilEvent event) {
         ItemStack item = event.getInventory().getFirstItem();
-        if (item != null && ItemUtils.getStackedItemSpawnerType(item) != null && SettingKey.SPAWNER_DISABLE_ITEM_ANVIL_RENAMING.get())
+        if (item != null && item.getType() == Material.SPAWNER && SettingKey.SPAWNER_DISABLE_ITEM_ANVIL_RENAMING.get())
             event.setResult(null);
     }
 
