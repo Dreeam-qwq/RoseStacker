@@ -6,7 +6,6 @@ import dev.rosewood.rosegarden.utils.NMSUtil;
 import dev.rosewood.rosegarden.compatibility.CompatibilityAdapter;
 import dev.rosewood.rosegarden.compatibility.handler.ShearedHandler;
 import dev.rosewood.rosegarden.utils.NMSUtil;
-import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.config.SettingKey;
 import dev.rosewood.rosestacker.event.AsyncEntityDeathEvent;
 import dev.rosewood.rosestacker.manager.EntityCacheManager;
@@ -19,13 +18,11 @@ import dev.rosewood.rosestacker.stack.StackedItem;
 import dev.rosewood.rosestacker.stack.StackedSpawner;
 import dev.rosewood.rosestacker.stack.settings.EntityStackSettings;
 import dev.rosewood.rosestacker.stack.settings.ItemStackSettings;
-import dev.rosewood.rosestacker.stack.settings.MultikillBound;
 import dev.rosewood.rosestacker.stack.settings.SpawnerStackSettings;
 import dev.rosewood.rosestacker.utils.ContainerUtil;
 import dev.rosewood.rosestacker.utils.EntityUtils;
 import dev.rosewood.rosestacker.utils.ItemUtils;
 import dev.rosewood.rosestacker.utils.PersistentDataUtils;
-import dev.rosewood.rosestacker.utils.StackerUtils;
 import dev.rosewood.rosestacker.utils.ThreadUtils;
 import dev.rosewood.rosestacker.utils.VersionUtils;
 import java.util.ArrayList;
@@ -35,10 +32,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.Statistic;
 import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Chicken;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.Enderman;
@@ -53,6 +48,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Sheep;
 import org.bukkit.entity.Slime;
+import org.bukkit.entity.Sniffer;
 import org.bukkit.entity.Wither;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -69,6 +65,8 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityDropItemEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
+import org.bukkit.event.entity.EntityPotionEffectEvent.Cause;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.entity.EntityTeleportEvent;
@@ -223,6 +221,13 @@ public class EntityListener implements Listener {
     public void onEntityTeleport(EntityTeleportEvent event) {
         // Endermen can still target enitites due to custom dodging AI, so prevent them from teleporting when AI is disabled
         if (event.getEntityType() == EntityType.ENDERMAN && PersistentDataUtils.isAiDisabled((Enderman) event.getEntity()))
+            event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityDrinkPotion(EntityPotionEffectEvent event) {
+        // Prevent witches from drinking potions when AI is disabled
+        if (event.getCause() == Cause.POTION_DRINK && PersistentDataUtils.isAiDisabled((LivingEntity) event.getEntity()))
             event.setCancelled(true);
     }
 
@@ -392,31 +397,7 @@ public class EntityListener implements Listener {
         Runnable task = () -> {
             // Should we kill multiple entities?
             if (SettingKey.ENTITY_MULTIKILL_ENABLED.get()) {
-                int enchantmentMultiplier = 1;
-                if (!SettingKey.ENTITY_MULTIKILL_PLAYER_ONLY.get() || entity.getKiller() != null) {
-                    if (SettingKey.ENTITY_MULTIKILL_ENCHANTMENT_ENABLED.get()) {
-                        Enchantment requiredEnchantment = Enchantment.getByKey(NamespacedKey.fromString(SettingKey.ENTITY_MULTIKILL_ENCHANTMENT_TYPE.get()));
-                        if (requiredEnchantment == null) {
-                            // Only decrease stack size by 1 and print a warning to the console
-                            RoseStacker.getInstance().getLogger().warning("Invalid multikill enchantment type: " + SettingKey.ENTITY_MULTIKILL_ENCHANTMENT_TYPE.get());
-                        } else if (event != null && event.getEntity().getKiller() != null) {
-                            Player killer = event.getEntity().getKiller();
-                            enchantmentMultiplier = killer.getInventory().getItemInMainHand().getEnchantmentLevel(requiredEnchantment);
-                        }
-                    }
-                }
-
-                MultikillBound lowerBound = this.stackManager.getLowerMultikillBound();
-                MultikillBound upperBound = this.stackManager.getUpperMultikillBound();
-
-                int lowerValue = lowerBound.getValue(stackSize);
-                int upperValue = upperBound.getValue(stackSize);
-                if (upperValue < lowerValue)
-                    upperValue = lowerValue;
-
-                int targetAmount = StackerUtils.randomInRange(lowerValue, upperValue);
-                int killAmount = Math.max(1, targetAmount * enchantmentMultiplier);
-
+                int killAmount = StackedEntity.getNextMultikillAmount(entity, stackSize);
                 if (killAmount >= stackSize) {
                     stackedEntity.killEntireStack(event);
                 } else {
@@ -577,6 +558,42 @@ public class EntityListener implements Listener {
             amount = Math.min(amount, maxAmount);
 
         List<ItemStack> items = GuiUtil.getMaterialAmountAsItemStacks(eggMaterial, amount);
+        this.stackManager.preStackItems(items, event.getEntity().getLocation());
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onSnifferSniff(EntityDropItemEvent event) {
+        if (!event.getEntityType().getKey().getKey().equals("sniffer"))
+            return;
+
+        if (this.stackManager.isAreaDisabled(event.getEntity().getLocation()))
+            return;
+
+        if (!this.stackManager.isEntityStackingEnabled())
+            return;
+
+        Material dropMaterial = event.getItemDrop().getItemStack().getType();
+
+        Sniffer sniffer = (Sniffer) event.getEntity();
+        StackedEntity stackedEntity = this.stackManager.getStackedEntity(sniffer);
+        if (stackedEntity == null)
+            return;
+
+        EntityStackSettings snifferStackSettings = stackedEntity.getStackSettings();
+        if (!snifferStackSettings.getSettingValue(EntityStackSettings.SNIFFER_MULTIPLY_DIG_DROPS_BY_STACK_SIZE).getBoolean())
+            return;
+
+        event.getItemDrop().remove();
+
+        int maxAmount = snifferStackSettings.getSettingValue(EntityStackSettings.SNIFFER_MAX_DIG_DROPS_STACK_SIZE).getInt();
+        if (maxAmount == 0) // Allow disabling eggs for stacks
+            return;
+
+        int amount = stackedEntity.getStackSize();
+        if (maxAmount > 0)
+            amount = Math.min(amount, maxAmount);
+
+        List<ItemStack> items = GuiUtil.getMaterialAmountAsItemStacks(dropMaterial, amount);
         this.stackManager.preStackItems(items, event.getEntity().getLocation());
     }
 
