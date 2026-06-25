@@ -46,6 +46,7 @@ import org.bukkit.entity.Horse;
 import org.bukkit.entity.IronGolem;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Llama;
+import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.MushroomCow;
 import org.bukkit.entity.Panda;
 import org.bukkit.entity.Parrot;
@@ -64,6 +65,7 @@ import org.bukkit.entity.Slime;
 import org.bukkit.entity.Snowman;
 import org.bukkit.entity.Squid;
 import org.bukkit.entity.Strider;
+import org.bukkit.entity.SulfurCube;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.TropicalFish;
 import org.bukkit.entity.Turtle;
@@ -213,6 +215,15 @@ public final class StackConditions {
         // Register conditions for specific entities
         int versionNumber = NMSUtil.getVersionNumber();
         int minorVersionNumber = NMSUtil.getMinorVersionNumber();
+        if (versionNumber > 26 || (versionNumber == 26 && minorVersionNumber >= 2)) {
+            registerConfig(MagmaCube.class, "different-size", true, EntityStackComparisonResult.DIFFERENT_SIZES, (entity1, entity2) -> entity1.getSize() != entity2.getSize());
+            registerConfig(SulfurCube.class, "different-size", true, EntityStackComparisonResult.DIFFERENT_SIZES, (entity1, entity2) -> entity1.getSize() != entity2.getSize());
+            registerConfig(SulfurCube.class, "has-block", true, EntityStackComparisonResult.HAS_BLOCK, (entity1, entity2) -> !entity1.getEquipment().getItem(EquipmentSlot.BODY).isEmpty() || !entity2.getEquipment().getItem(EquipmentSlot.BODY).isEmpty());
+//            if (NMSUtil.isPaper()) { // TODO: Doesn't seem to be implemented yet
+//                registerConfig(SulfurCube.class, "different-archetype", true, EntityStackComparisonResult.DIFFERENT_ARCHETYPE, (entity1, entity2) -> entity1.getAr() != entity2.getSize());
+//            }
+        }
+
         if (versionNumber > 21 || (versionNumber == 21 && minorVersionNumber >= 11)) {
             registerConfig(ZombieNautilus.class, "different-type", false, EntityStackComparisonResult.DIFFERENT_TYPES, (entity1, entity2) -> entity1.getVariant() != entity2.getVariant());
         }

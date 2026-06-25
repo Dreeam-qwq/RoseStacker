@@ -32,6 +32,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Statistic;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.AbstractCubeMob;
 import org.bukkit.entity.Chicken;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.Enderman;
@@ -263,7 +264,7 @@ public class EntityListener implements Listener {
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         // Prevent guardians with disabled AI from spiking their attacker
         if (event.getEntity().getType() == EntityType.PLAYER
-                && (event.getDamager() instanceof Guardian || event.getDamager() instanceof Slime)
+                && (event.getDamager() instanceof Guardian || event.getDamager().getType() == EntityType.SLIME || event.getDamager().getType() == EntityType.MAGMA_CUBE || event.getDamager().getType().name().equals("SULFUR_CUBE"))
                 && PersistentDataUtils.isAiDisabled((LivingEntity) event.getDamager())) {
             event.setCancelled(true);
         }
@@ -436,11 +437,13 @@ public class EntityListener implements Listener {
         EntityStackSettings newStackSettings = this.stackSettingManager.getEntityStackSettings(event.getTransformedEntity().getType());
         boolean aiDisabled = PersistentDataUtils.isAiDisabled((LivingEntity) event.getEntity());
         boolean fromSpawner = PersistentDataUtils.isSpawnedFromSpawner(event.getEntity());
-        if (event.getEntity() instanceof Slime) {
+
+        EntityType entityType = event.getEntity().getType();
+        if (entityType == EntityType.SLIME || entityType == EntityType.MAGMA_CUBE || entityType.name().equals("SULFUR_CUBE")) {
             if (aiDisabled)
-                event.getTransformedEntities().stream().map(x -> (Slime) x).forEach(PersistentDataUtils::removeEntityAi);
+                event.getTransformedEntities().stream().map(x -> (LivingEntity) x).forEach(PersistentDataUtils::removeEntityAi);
             if (fromSpawner)
-                event.getTransformedEntities().stream().map(x -> (Slime) x).forEach(newStackSettings::applySpawnerSpawnedProperties);
+                event.getTransformedEntities().stream().map(x -> (LivingEntity) x).forEach(newStackSettings::applySpawnerSpawnedProperties);
             return;
         }
 
@@ -459,10 +462,9 @@ public class EntityListener implements Listener {
             event.setCancelled(true);
 
             // Handle mooshroom shearing
-            EntityType entityType = event.getEntityType();
             if (entityType == VersionUtils.MOOSHROOM) {
                 int mushroomsDropped = 5;
-                EntityStackSettings mooshroomStackSettings = stackSettingManager.getEntityStackSettings(entityType);
+                EntityStackSettings mooshroomStackSettings = this.stackSettingManager.getEntityStackSettings(entityType);
                 if (mooshroomStackSettings.getSettingValue(EntityStackSettings.MOOSHROOM_DROP_ADDITIONAL_MUSHROOMS_FOR_EACH_COW_IN_STACK).getBoolean())
                     mushroomsDropped += (stackedEntity.getStackSize() - 1) * stackedEntity.getStackSettings().getSettingValue(EntityStackSettings.MOOSHROOM_EXTRA_MUSHROOMS_PER_COW_IN_STACK).getInt();
 
