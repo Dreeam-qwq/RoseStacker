@@ -441,12 +441,7 @@ public class EntityListener implements Listener {
         this.handleEntityTransformation(event);
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPigZap(PigZapEvent event) {
-        this.handleEntityTransformation(event);
-    }
-
-    private void handleEntityTransformation(EntityTransformEvent event) {
+    public void handleEntityTransformation(EntityTransformEvent event) {
         if (this.stackManager.isAreaDisabled(event.getEntity().getLocation()))
             return;
 
