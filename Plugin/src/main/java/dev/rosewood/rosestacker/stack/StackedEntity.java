@@ -38,6 +38,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Statistic;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.AbstractCubeMob;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.EnderDragon;
@@ -49,6 +50,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Slime;
+import org.bukkit.entity.SulfurCube;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -433,7 +435,7 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
         boolean isWither = mainEntity.getType() == EntityType.WITHER;
         boolean killedByWither = mainEntity.getLastDamageCause() instanceof EntityDamageByEntityEvent damageEvent
                 && (damageEvent.getDamager().getType() == EntityType.WITHER || damageEvent.getDamager().getType() == EntityType.WITHER_SKULL);
-        boolean isSlime = mainEntity instanceof Slime;
+        boolean isSlime = mainEntity.getType() == EntityType.SLIME || mainEntity.getType() == EntityType.MAGMA_CUBE;
         boolean isAccurateSlime = isSlime && this.stackSettings.getSettingValue(EntityStackSettings.SLIME_ACCURATE_DROPS_WITH_KILL_ENTIRE_STACK_ON_DEATH).getBoolean();
 
         ListMultimap<LivingEntity, EntityDrops> entityDrops = MultimapBuilder.linkedHashKeys().arrayListValues().build();
@@ -449,10 +451,14 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
 
             int iterations = 1;
             if (isSlime) {
+                int size = switch (entity.getType()) {
+                    case SLIME -> ((Slime) entity).getSize();
+                    case MAGMA_CUBE -> ((MagmaCube) entity).getSize();
+                    default -> throw new IllegalStateException("Invalid slime type");
+                };
                 Slime slime = (Slime) entity;
                 if (isAccurateSlime) {
                     int totalSlimes = 1;
-                    int size = slime.getSize();
                     while (size > 1) {
                         size /= 2;
                         int currentSlimes = totalSlimes;
@@ -460,7 +466,10 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
                     }
                     iterations = totalSlimes;
                 }
-                slime.setSize(slime.getType() == EntityType.SLIME ? 1 : 2); // Slimes require size 1 to drop items, magma cubes require > size 1
+                switch (slime.getType()) { // Slimes require size 1 to drop items, magma cubes require > size 1
+                    case SLIME -> slime.setSize(1);
+                    case MAGMA_CUBE -> slime.setSize(2);
+                }
             }
 
             boolean isBaby = isAnimal && !((Animals) entity).isAdult();
@@ -694,8 +703,11 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
                 event.getDrops().clear();
             }
 
+            // Make sure it doesn't split
             if (this.entity.getType() == EntityType.MAGMA_CUBE)
-                ((MagmaCube) this.entity).setSize(1); // Make sure it doesn't split
+                ((MagmaCube) this.entity).setSize(1);
+            if (this.entity.getType().name().equals("SULFUR_CUBE"))
+                ((SulfurCube) this.entity).setSize(1);
         } else if (SettingKey.ENTITY_DROP_ACCURATE_EXP.get()) {
             if (event == null) {
                 EntitySpawnUtil.spawn(this.entity.getLocation(), ExperienceOrb.class, x -> x.setExperience(experience));
@@ -753,8 +765,13 @@ public class StackedEntity extends Stack<EntityStackSettings> implements Compara
         this.decreaseStackSize();
 
         // Prevent the entity from splitting
-        if (originalEntity instanceof Slime slime)
-            slime.setSize(1);
+        if (NMSUtil.getVersionNumber() > 26 || (NMSUtil.getVersionNumber() == 26 && NMSUtil.getMinorVersionNumber() >= 2)) {
+            if (originalEntity instanceof AbstractCubeMob abstractCubeMob)
+                abstractCubeMob.setSize(1);
+        } else {
+            if (originalEntity instanceof Slime slime)
+                slime.setSize(1);
+        }
 
         Player killer = originalEntity.getKiller();
         if (killer != null && amount - 1 > 0 && SettingKey.MISC_STACK_STATISTICS.get())

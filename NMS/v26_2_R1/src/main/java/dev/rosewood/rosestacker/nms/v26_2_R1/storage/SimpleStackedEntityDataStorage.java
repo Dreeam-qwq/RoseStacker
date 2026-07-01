@@ -1,9 +1,9 @@
-package dev.rosewood.rosestacker.nms.v26_1_R1.storage;
+package dev.rosewood.rosestacker.nms.v26_2_R1.storage;
 
 import dev.rosewood.rosestacker.nms.NMSAdapter;
 import dev.rosewood.rosestacker.nms.NMSHandler;
 import dev.rosewood.rosestacker.nms.storage.AbstractSimpleStackedEntityDataStorage;
-import dev.rosewood.rosestacker.nms.v26_1_R1.NMSHandlerImpl;
+import dev.rosewood.rosestacker.nms.v26_2_R1.NMSHandlerImpl;
 import net.minecraft.nbt.CompoundTag;
 import org.bukkit.entity.LivingEntity;
 

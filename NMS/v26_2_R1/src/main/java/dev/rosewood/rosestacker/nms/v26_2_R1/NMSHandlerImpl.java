@@ -1,4 +1,4 @@
-package dev.rosewood.rosestacker.nms.v26_1_R1;
+package dev.rosewood.rosestacker.nms.v26_2_R1;
 
 import com.google.common.collect.Lists;
 import dev.rosewood.rosegarden.utils.NMSUtil;
@@ -11,14 +11,14 @@ import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorage;
 import dev.rosewood.rosestacker.nms.storage.StackedEntityDataStorageType;
 import dev.rosewood.rosestacker.nms.storage.StorageMigrationType;
 import dev.rosewood.rosestacker.nms.util.ReflectionUtils;
-import dev.rosewood.rosestacker.nms.v26_1_R1.entity.SoloEntitySpider;
-import dev.rosewood.rosestacker.nms.v26_1_R1.entity.SoloEntityStrider;
-import dev.rosewood.rosestacker.nms.v26_1_R1.event.AsyncEntityDeathEventImpl;
-import dev.rosewood.rosestacker.nms.v26_1_R1.hologram.HologramImpl;
-import dev.rosewood.rosestacker.nms.v26_1_R1.spawner.StackedSpawnerTileImpl;
-import dev.rosewood.rosestacker.nms.v26_1_R1.storage.NBTEntityDataEntry;
-import dev.rosewood.rosestacker.nms.v26_1_R1.storage.NBTStackedEntityDataStorage;
-import dev.rosewood.rosestacker.nms.v26_1_R1.storage.SimpleStackedEntityDataStorage;
+import dev.rosewood.rosestacker.nms.v26_2_R1.entity.SoloEntitySpider;
+import dev.rosewood.rosestacker.nms.v26_2_R1.entity.SoloEntityStrider;
+import dev.rosewood.rosestacker.nms.v26_2_R1.event.AsyncEntityDeathEventImpl;
+import dev.rosewood.rosestacker.nms.v26_2_R1.hologram.HologramImpl;
+import dev.rosewood.rosestacker.nms.v26_2_R1.spawner.StackedSpawnerTileImpl;
+import dev.rosewood.rosestacker.nms.v26_2_R1.storage.NBTEntityDataEntry;
+import dev.rosewood.rosestacker.nms.v26_2_R1.storage.NBTStackedEntityDataStorage;
+import dev.rosewood.rosestacker.nms.v26_2_R1.storage.SimpleStackedEntityDataStorage;
 import dev.rosewood.rosestacker.stack.StackedSpawner;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -27,9 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
@@ -49,6 +47,7 @@ import net.minecraft.world.entity.EntityReference;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.PostSpawnProcessor;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.control.JumpControl;
@@ -58,7 +57,6 @@ import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.animal.rabbit.Rabbit;
-import net.minecraft.world.entity.monster.EnderMan;
 import net.minecraft.world.entity.monster.Strider;
 import net.minecraft.world.entity.monster.spider.Spider;
 import net.minecraft.world.entity.monster.zombie.Zombie;
@@ -118,7 +116,6 @@ public class NMSHandlerImpl implements NMSHandler {
     private static Method method_EntityLookup_addNewEntity; // Method to add a new entity which is part of paper's chunk system
 
     private static Field field_Entity_spawnReason; // Spawn reason field (only on Paper servers, will be null for Spigot)
-    private static AtomicInteger entityCounter; // Atomic integer to generate unique entity IDs, normally private
 
     private static Unsafe unsafe;
     private static long field_SpawnerBlockEntity_spawner_offset; // Field offset for modifying SpawnerBlockEntity's spawner field
@@ -151,7 +148,6 @@ public class NMSHandlerImpl implements NMSHandler {
 
             if (NMSUtil.isPaper())
                 field_Entity_spawnReason = ReflectionUtils.getFieldByPositionAndType(Entity.class, 0, SpawnReason.class);
-            entityCounter = (AtomicInteger) ReflectionUtils.getFieldByPositionAndType(Entity.class, 0, AtomicInteger.class).get(null);
 
             Field field_SpawnerBlockEntity_spawner = ReflectionUtils.getFieldByPositionAndType(SpawnerBlockEntity.class, 0, BaseSpawner.class);
             Field field_Level_random = ReflectionUtils.getFieldByPositionAndType(Level.class, 0, RandomSource.class);
@@ -197,7 +193,7 @@ public class NMSHandlerImpl implements NMSHandler {
     }
 
     /**
-     * Duplicate of {@link net.minecraft.world.entity.EntityType#create(ServerLevel, Consumer, BlockPos, EntitySpawnReason, boolean, boolean)}.
+     * Duplicate of {@link net.minecraft.world.entity.EntityType#create(ServerLevel, PostSpawnProcessor, BlockPos, EntitySpawnReason, boolean, boolean)}.
      * Contains a patch to prevent chicken jockeys from spawning and to not play the mob sound upon creation.
      */
     public <T extends Entity> T createCreature(net.minecraft.world.entity.EntityType<T> entityType, ServerLevel world, BlockPos blockPos, EntitySpawnReason mobSpawnType) {
@@ -351,7 +347,7 @@ public class NMSHandlerImpl implements NMSHandler {
         nmsItem.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY, comp -> comp.update(currentNbt -> {
             currentNbt.putString(key, value);
         }));
-        return CraftItemStack.asBukkitCopy(nmsItem);
+        return CraftItemStack.asCraftMirror(nmsItem);
     }
 
     @Override
@@ -360,7 +356,7 @@ public class NMSHandlerImpl implements NMSHandler {
         nmsItem.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY, comp -> comp.update(currentNbt -> {
             currentNbt.putInt(key, value);
         }));
-        return CraftItemStack.asBukkitCopy(nmsItem);
+        return CraftItemStack.asCraftMirror(nmsItem);
     }
 
     @Override
@@ -440,7 +436,7 @@ public class NMSHandlerImpl implements NMSHandler {
 
     @Override
     public Hologram createHologram(Location location, List<String> text) {
-        return new HologramImpl(text, location, entityCounter::incrementAndGet);
+        return new HologramImpl(text, location, ((CraftWorld) location.getWorld()).getHandle()::getNextEntityId);
     }
 
     @Override

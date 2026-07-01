@@ -1,31 +1,27 @@
-package dev.rosewood.rosestacker.nms.v26_1_R1.storage;
+package dev.rosewood.rosestacker.nms.v26_2_R1.storage;
 
 import dev.rosewood.rosestacker.RoseStacker;
 import dev.rosewood.rosestacker.nms.NMSAdapter;
 import dev.rosewood.rosestacker.nms.storage.EntityDataEntry;
-import dev.rosewood.rosestacker.nms.v26_1_R1.NMSHandlerImpl;
-import java.util.Optional;
+import dev.rosewood.rosestacker.nms.v26_2_R1.NMSHandlerImpl;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.DoubleTag;
 import net.minecraft.nbt.FloatTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.npc.villager.Villager;
-import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueInputContextHelper;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.entity.CraftEntityType;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 
@@ -65,12 +61,12 @@ public class NBTEntityDataEntry implements EntityDataEntry {
             if (nbt.getCompoundOrEmpty("BukkitValues").isEmpty()) // fix error on Spigot when looking up BukkitValues
                 nbt.remove("BukkitValues");
 
-            Optional<net.minecraft.world.entity.EntityType<?>> optionalEntity = BuiltInRegistries.ENTITY_TYPE.getOptional(Identifier.tryParse(entityType.getKey().getKey()));
-            if (optionalEntity.isPresent()) {
+            net.minecraft.world.entity.EntityType<?> nmsEntityType = CraftEntityType.bukkitToMinecraft(entityType);
+            if (nmsEntityType != null) {
                 ServerLevel world = ((CraftWorld) location.getWorld()).getHandle();
 
                 Entity entity = nmsHandler.createCreature(
-                        optionalEntity.get(),
+                        nmsEntityType,
                         world,
                         new BlockPos(location.getBlockX(), location.getBlockY(), location.getBlockZ()),
                         EntitySpawnReason.COMMAND

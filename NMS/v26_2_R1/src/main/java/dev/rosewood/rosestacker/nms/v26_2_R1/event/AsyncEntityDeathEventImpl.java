@@ -1,4 +1,4 @@
-package dev.rosewood.rosestacker.nms.v26_1_R1.event;
+package dev.rosewood.rosestacker.nms.v26_2_R1.event;
 
 import dev.rosewood.rosestacker.event.AsyncEntityDeathEvent;
 import dev.rosewood.rosestacker.nms.util.ReflectionUtils;
